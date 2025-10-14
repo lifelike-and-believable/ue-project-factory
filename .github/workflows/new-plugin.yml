@@ -209,14 +209,17 @@ jobs:
         run: |
           echo "Waiting for Copilot to create PR..."
           
-          # Wait up to 5 minutes for a PR to appear
+          # Wait up to 5 minutes for a PR to appear from Copilot
           for i in {1..30}; do
-            PR_NUMBER=$(gh pr list --repo "${{ inputs.org }}/$REPO_NAME" --json number --jq '.[0].number' 2>/dev/null || echo "")
+            PR_NUMBER=$(gh pr list --repo "${{ inputs.org }}/$REPO_NAME" --author app/copilot --json number,headRefName --jq '.[0].number' 2>/dev/null || echo "")
             if [ -n "$PR_NUMBER" ]; then
-              echo "Found PR #$PR_NUMBER"
+              echo "Found PR #$PR_NUMBER from Copilot"
+              # Get the head ref for filtering workflow runs
+              PR_HEAD_REF=$(gh pr view "$PR_NUMBER" --repo "${{ inputs.org }}/$REPO_NAME" --json headRefName --jq '.headRefName')
+              echo "PR branch: $PR_HEAD_REF"
               break
             fi
-            echo "Waiting for PR... ($i/30)"
+            echo "Waiting for PR from Copilot... ($i/30)"
             sleep 10
           done
           
@@ -225,24 +228,27 @@ jobs:
             exit 0
           fi
           
-          # Wait for workflow run to be queued
+          # Wait for workflow run to be queued (GitHub needs time to trigger workflows after PR creation)
           echo "Waiting for workflow run to be created..."
           sleep 20
           
-          # Check for workflow runs requiring approval
+          # Check for workflow runs requiring approval on the PR branch
           for i in {1..10}; do
-            RUNS=$(gh api "repos/${{ inputs.org }}/$REPO_NAME/actions/runs?status=action_required" --jq '.workflow_runs[] | select(.conclusion == null) | .id')
+            RUNS=$(gh api "repos/${{ inputs.org }}/$REPO_NAME/actions/runs?status=action_required&branch=$PR_HEAD_REF" --jq '.workflow_runs[] | select(.conclusion == null) | .id')
             
             if [ -n "$RUNS" ]; then
               for RUN_ID in $RUNS; do
-                echo "Auto-approving workflow run $RUN_ID"
-                gh api --method POST "repos/${{ inputs.org }}/$REPO_NAME/actions/runs/$RUN_ID/approve" 2>&1 || echo "Approval may have already been granted"
+                echo "Auto-approving workflow run $RUN_ID for PR #$PR_NUMBER"
+                ERROR_MSG=$(gh api --method POST "repos/${{ inputs.org }}/$REPO_NAME/actions/runs/$RUN_ID/approve" 2>&1) || {
+                  echo "Failed to approve workflow run $RUN_ID: $ERROR_MSG"
+                  echo "This might be expected if approval was already granted or the run has completed."
+                }
               done
               echo "Workflow approval completed"
               break
             fi
             
-            echo "Checking for workflows requiring approval... ($i/10)"
+            echo "Checking for workflows requiring approval on branch $PR_HEAD_REF... ($i/10)"
             sleep 5
           done
           
