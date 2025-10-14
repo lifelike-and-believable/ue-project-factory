@@ -1,11 +1,9 @@
 name: Build (Windows, UE)
 
 on:
-  workflow_dispatch:
-# (no push/PR triggers for now)  
-#  push:
-#    branches: [ main ]
-#  pull_request:
+  push:
+    branches: [ main ]
+  pull_request:
 
 permissions:
   contents: read
