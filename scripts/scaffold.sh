@@ -14,7 +14,10 @@ if [ -z "$REPO_NAME" ]; then
   SLUG=$(echo "$PLUGIN" | tr "[:upper:]" "[:lower:]")
   REPO_NAME="ue-$SLUG"
 fi
-gh repo create "$ORG/$REPO_NAME" --"$VISIBILITY" --template "$TEMPLATE"
+
+# Construct the visibility flag properly
+VISIBILITY_FLAG="--${VISIBILITY}"
+gh repo create "$ORG/$REPO_NAME" "$VISIBILITY_FLAG" --template "$TEMPLATE"
 git clone "https://$GH_TOKEN@github.com/$ORG/$REPO_NAME.git"
 cd "$REPO_NAME"
 
@@ -83,8 +86,10 @@ fi
 
 # Replace all text references to SamplePlugin with the new plugin name
 echo "Replacing text references to SamplePlugin with $PLUGIN..."
-if git grep -l --untracked "SamplePlugin" > /dev/null 2>&1; then
-  git grep -l --untracked "SamplePlugin" | xargs sed -i "s/SamplePlugin/$PLUGIN/g"
+# Use -z and xargs -0 to handle filenames with spaces safely
+# The || true prevents errors if no files are found
+if git grep -l --untracked -z "SamplePlugin" 2>/dev/null | xargs -0 -r sed -i "s/SamplePlugin/$PLUGIN/g" 2>/dev/null; then
+  echo "Text replacement completed successfully"
 else
   echo "WARNING: No files found containing 'SamplePlugin' to replace"
 fi
