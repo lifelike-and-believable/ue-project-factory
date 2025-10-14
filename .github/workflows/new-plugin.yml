@@ -43,13 +43,88 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.FACTORY_ADMIN_TOKEN }}
         run: gh auth status
-      - name: Scaffold new project
+      - name: Parse requirements
+        id: parse
+        env:
+          REQ: ${{ inputs.requirements }}
+        run: |
+          python3 scripts/parser.py > spec.json
+          echo "plugin_name=$(jq -r .plugin_name spec.json)" >> $GITHUB_OUTPUT
+          echo "ue_version=$(jq -r .ue_version spec.json)" >> $GITHUB_OUTPUT
+          
+      - name: Create repository from template
         env:
           GH_TOKEN: ${{ secrets.FACTORY_ADMIN_TOKEN }}
         run: |
-          bash scripts/scaffold.sh \
-            "${{ inputs.org }}" \
-            "${{ inputs.template_repo }}" \
-            "${{ inputs.visibility }}" \
-            "${{ inputs.requirements }}" \
-            "${{ inputs.repo_name }}"
+          PLUGIN="${{ steps.parse.outputs.plugin_name }}"
+          REPO_NAME="${{ inputs.repo_name }}"
+          
+          if [ -z "$REPO_NAME" ]; then
+            SLUG=$(echo "$PLUGIN" | tr "[:upper:]" "[:lower:]")
+            REPO_NAME="ue-$SLUG"
+          fi
+          
+          echo "Creating repository ${{ inputs.org }}/$REPO_NAME from template ${{ inputs.template_repo }}"
+          gh repo create "${{ inputs.org }}/$REPO_NAME" \
+            --${{ inputs.visibility }} \
+            --template "${{ inputs.template_repo }}"
+          
+          echo "REPO_NAME=$REPO_NAME" >> $GITHUB_ENV
+          
+      - name: Create issue and assign to Copilot Agent
+        env:
+          GH_TOKEN: ${{ secrets.FACTORY_ADMIN_TOKEN }}
+        run: |
+          PLUGIN="${{ steps.parse.outputs.plugin_name }}"
+          UE_VERSION="${{ steps.parse.outputs.ue_version }}"
+          REQUIREMENTS="${{ inputs.requirements }}"
+          
+          # Construct the problem statement for Copilot Agent
+          cat > issue_body.md << 'EOF'
+          # Implement Unreal Engine Plugin: $PLUGIN
+          
+          ## Requirements
+          $REQUIREMENTS
+          
+          ## Technical Context
+          - Unreal Engine Version: $UE_VERSION
+          - Target Platforms: Win64
+          - Template Structure: This repo was created from ue-plugin-template
+          
+          ## Tasks
+          1. Rename all instances of `SamplePlugin` to `$PLUGIN` including:
+             - Directory names in `Plugins/`
+             - Source module folders
+             - .uplugin file
+             - All code references
+             - Build.cs files
+          
+          2. Update `ProjectSandbox/ProjectSandbox.uproject` to set correct engine version
+          
+          3. Implement the plugin functionality based on the requirements above
+          
+          4. Ensure all tests in `Source/${PLUGIN}Tests/` are updated and pass
+          
+          5. Update README.md with plugin-specific documentation
+          
+          ## Build & Test
+          The repo has a `pr-ci.yml` workflow that will automatically:
+          - Build the plugin using UAT
+          - Run automation tests
+          - Upload artifacts
+          
+          Please ensure your implementation will build and pass tests on Windows with UE $UE_VERSION installed at `C:\UE\UE_5.6`.
+          EOF
+          
+          # Replace variables in the issue body
+          sed -i "s/\$PLUGIN/$PLUGIN/g" issue_body.md
+          sed -i "s/\$UE_VERSION/$UE_VERSION/g" issue_body.md
+          sed -i "s/\$REQUIREMENTS/$REQUIREMENTS/g" issue_body.md
+          
+          # Create the issue and assign to @copilot
+          echo "Creating issue in ${{ inputs.org }}/$REPO_NAME"
+          gh issue create \
+            --repo "${{ inputs.org }}/$REPO_NAME" \
+            --title "Initialize $PLUGIN plugin" \
+            --body-file issue_body.md \
+            --assignee @copilot

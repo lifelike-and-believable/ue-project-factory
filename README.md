@@ -9,9 +9,21 @@ Creates a new Unreal Engine plugin project from a template, driven by a freeform
 
 ## What it does
 - Creates repo from the template
-- Renames SamplePlugin to your plugin name
-- Opens a PR with the scaffold
-- CI in the new repo runs automatically
+- Parses your requirements to extract plugin name and UE version
+- Creates an issue with a structured problem statement
+- Assigns the issue to GitHub Copilot Coding Agent
+- Copilot Agent implements the plugin and opens a PR
+- CI in the new repo runs automatically on the PR
+
+## How it works
+The workflow uses GitHub Copilot Coding Agent to implement the plugin based on your requirements. The agent:
+1. Renames `SamplePlugin` to your desired plugin name
+2. Updates all file paths and references
+3. Implements the plugin functionality
+4. Ensures tests pass
+5. Opens a PR for review
 
 ## Notes
-- The parser is a stub; replace `scripts/parser.py` with an LLM-backed parser that outputs the same JSON keys.
+- The parser extracts plugin name and UE version from your requirements
+- GitHub Copilot Coding Agent requires appropriate subscription (Pro, Pro+, Business, or Enterprise)
+- The agent will create a PR that triggers the template's CI workflow
