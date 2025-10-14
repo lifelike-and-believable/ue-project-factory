@@ -17,9 +17,12 @@ name: New UE Plugin Project
       repo_name:
         description: Optional explicit repo name
         required: false
+      requirements_file:
+        description: 'Path to requirements file in factory repo (e.g., specs/my-plugin.md) - takes precedence over requirements field'
+        required: false
       requirements:
-        description: Freeform requirements prompt
-        required: true
+        description: 'Freeform requirements prompt (used if requirements_file is not provided)'
+        required: false
 jobs:
   factory:
     runs-on: ubuntu-latest
@@ -43,10 +46,29 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.FACTORY_ADMIN_TOKEN }}
         run: gh auth status
+      - name: Load requirements
+        id: load_req
+        run: |
+          if [ -n "${{ inputs.requirements_file }}" ]; then
+            if [ ! -f "${{ inputs.requirements_file }}" ]; then
+              echo "Error: Requirements file '${{ inputs.requirements_file }}' not found"
+              exit 1
+            fi
+            REQ=$(cat "${{ inputs.requirements_file }}")
+            echo "Loaded requirements from file: ${{ inputs.requirements_file }}"
+          else
+            REQ="${{ inputs.requirements }}"
+            echo "Using inline requirements"
+          fi
+          # Use heredoc to safely handle multiline content
+          echo "requirements<<EOF" >> $GITHUB_OUTPUT
+          echo "$REQ" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
       - name: Parse requirements
         id: parse
         env:
-          REQ: ${{ inputs.requirements }}
+          REQ: ${{ steps.load_req.outputs.requirements }}
+          PLUGIN_NAME: ${{ inputs.plugin_name }}
         run: |
           python3 scripts/parser.py > spec.json
           echo "plugin_name=$(jq -r .plugin_name spec.json)" >> $GITHUB_OUTPUT
@@ -77,7 +99,7 @@ jobs:
         run: |
           PLUGIN="${{ steps.parse.outputs.plugin_name }}"
           UE_VERSION="${{ steps.parse.outputs.ue_version }}"
-          REQUIREMENTS="${{ inputs.requirements }}"
+          REQUIREMENTS="${{ steps.load_req.outputs.requirements }}"
           
           # Construct the problem statement for Copilot Agent using envsubst for safe variable substitution
           export PLUGIN UE_VERSION REQUIREMENTS
