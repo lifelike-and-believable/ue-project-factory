@@ -27,7 +27,6 @@ jobs:
       contents: write
       issues: write
       pull-requests: write
-      administration: write
     steps:
       - uses: actions/checkout@v4
       - name: Install deps
