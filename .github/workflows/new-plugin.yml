@@ -103,7 +103,7 @@ jobs:
           
           3. Implement the plugin functionality based on the requirements above
           
-          4. Ensure all tests in `Source/${PLUGIN}Tests/` are updated and pass
+          4. Ensure all tests in `Source/$PLUGINTests/` are updated and pass
           
           5. Update README.md with plugin-specific documentation
           
