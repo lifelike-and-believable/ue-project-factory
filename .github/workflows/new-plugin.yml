@@ -1,0 +1,59 @@
+name: New UE Plugin Project
+on:
+  workflow_dispatch:
+    inputs:
+      org:
+        description: GitHub org or user
+        required: true
+      template_repo:
+        description: Template repo (org/name)
+        required: true
+        default: your-org/ue-plugin-template
+      visibility:
+        description: private|public|internal
+        required: true
+        default: private
+      repo_name:
+        description: Optional explicit repo name
+        required: false
+      requirements:
+        description: Freeform requirements prompt
+        required: true
+
+jobs:
+  factory:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      administration: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+          if ! command -v gh >/dev/null; then
+            type -p curl >/dev/null && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+            sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+            sudo apt update && sudo apt install gh -y
+          fi
+
+      - name: Authenticate gh
+        env:
+          GH_TOKEN: ${{ secrets.FACTORY_ADMIN_TOKEN }}
+        run: gh auth status
+
+      - name: Scaffold new project
+        env:
+          GH_TOKEN: ${{ secrets.FACTORY_ADMIN_TOKEN }}
+        run: |
+          bash scripts/scaffold.sh \
+            "${{ inputs.org }}" \
+            "${{ inputs.template_repo }}" \
+            "${{ inputs.visibility }}" \
+            "${{ inputs.requirements }}" \
+            "${{ inputs.repo_name }}"
