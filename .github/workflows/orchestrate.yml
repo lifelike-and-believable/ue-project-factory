@@ -9,9 +9,9 @@ jobs:
     steps:
       - name: Show secrets presence (not values)
         run: |
-          for k in APP_ID APP_PRIVATE_KEY INSTALLATION_ID; do
-            if [ -n "${{ secrets[k] }}" ]; then echo "$k=present"; else echo "$k=ABSENT"; fi
-          done
+          echo "APP_ID:           ${{ secrets.APP_ID != '' && 'present' || 'ABSENT' }}"
+          echo "APP_PRIVATE_KEY:  ${{ secrets.APP_PRIVATE_KEY != '' && 'present' || 'ABSENT' }}"
+          echo "INSTALLATION_ID:  ${{ secrets.INSTALLATION_ID != '' && 'present' || 'ABSENT' }}"
 
       - name: Get App Token
         id: app
@@ -25,4 +25,6 @@ jobs:
         env:
           TOKEN: ${{ steps.app.outputs.token }}
         run: |
-          curl -fsS -H "Authorization: Bearer $TOKEN" -H "Accept: application/vnd.github+json" https://api.github.com/app | jq '{id,slug,name}' || true
+          curl -fsS -H "Authorization: Bearer $TOKEN" \
+               -H "Accept: application/vnd.github+json" \
+               https://api.github.com/app | jq '{id,slug,name}' || true
