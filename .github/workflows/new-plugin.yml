@@ -146,7 +146,7 @@ jobs:
           - Run automation tests
           - Upload artifacts
           
-          Please ensure your implementation will build and pass tests on Windows with UE ${UE_VERSION} installed at `C:\Program Files\Epic Games\UE_5.6`.
+          Please ensure your implementation will build and pass tests on Windows with UE ${UE_VERSION} installed at `C:\Program Files\Epic Games\UE_${UE_VERSION}`.
           EOF
           else
             cat > issue_body.md << 'EOF'
@@ -179,7 +179,7 @@ jobs:
           - Run automation tests
           - Upload artifacts
           
-          Please ensure your implementation will build and pass tests on Windows with UE ${UE_VERSION} installed at `C:\Program Files\Epic Games\UE_5.6`.
+          Please ensure your implementation will build and pass tests on Windows with UE ${UE_VERSION} installed at `C:\Program Files\Epic Games\UE_${UE_VERSION}`.
           EOF
           fi
           
