@@ -1,4 +1,4 @@
-name: Orchestrate New UE Plugin Repo
+name: Orchestrate New UE Plugin Repo (DEBUG)
 
 on:
   workflow_dispatch:
@@ -27,6 +27,14 @@ jobs:
   create-repo:
     runs-on: ubuntu-latest
     steps:
+      - name: Echo inputs
+        run: |
+          echo "ORG=${{ github.repository_owner }}"
+          echo "REPO=${{ github.event.inputs.repo_name }}"
+          echo "PLUGIN_NAME=${{ github.event.inputs.plugin_name }}"
+          echo "PRIVATE=${{ github.event.inputs.private }}"
+          echo "DESC=${{ github.event.inputs.description }}"
+
       - name: Get App Token
         id: app-token
         uses: actions/create-github-app-token@v1
@@ -35,7 +43,54 @@ jobs:
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
           installation-id: ${{ secrets.INSTALLATION_ID }}
 
-      - name: Create repo from template
+      - name: Sanity check: whoami (App)
+        run: |
+          curl -fsS -H "Authorization: Bearer $TOKEN" -H "Accept: application/vnd.github+json" \
+            https://api.github.com/app | jq '{id, slug, name, owner}'
+        env:
+          TOKEN: ${{ steps.app-token.outputs.token }}
+
+      - name: Check installation visibility of template repo
+        run: |
+          set -e
+          curl -sS -H "Authorization: Bearer $TOKEN" -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${ORG}/${TEMPLATE} | tee resp.json
+          echo "is_template = $(jq -r .is_template resp.json)"
+          echo "permissions  = $(jq -r .permissions resp.json)"
+          if [ "$(jq -r .message resp.json)" != "null" ]; then
+            echo "ERROR from GitHub: $(jq -r .message resp.json)"
+          fi
+        env:
+          TOKEN: ${{ steps.app-token.outputs.token }}
+          ORG: ${{ github.repository_owner }}
+          TEMPLATE: ue-plugin-template
+
+      - name: Fail fast if the template is not marked as template
+        run: |
+          curl -fsS -H "Authorization: Bearer $TOKEN" -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${ORG}/${TEMPLATE} | jq -e 'select(.is_template==true)' >/dev/null || \
+            (echo "::error ::Repo ${ORG}/${TEMPLATE} is not a Template repository. In GitHub UI → Settings → check “Template repository” and retry." && exit 1)
+        env:
+          TOKEN: ${{ steps.app-token.outputs.token }}
+          ORG: ${{ github.repository_owner }}
+          TEMPLATE: ue-plugin-template
+
+      - name: Create repo from template (print errors if any)
+        id: gen
+        run: |
+          set -e
+          body=$(jq -n --arg owner "$ORG" --arg name "$REPO" --argjson private $PRIVATE \
+                      --arg desc "$DESC" '{owner:$owner,name:$name,private:$private,description:$desc}')
+          echo "Request body: $body"
+          http_code=$(curl -sS -w "%{http_code}" -o out.json \
+            -X POST -H "Authorization: Bearer $TOKEN" -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${ORG}/${TEMPLATE}/generate" -d "$body")
+          echo "HTTP $http_code"
+          cat out.json | jq . || cat out.json
+          if [ "$http_code" -ge 400 ]; then
+            echo "::error ::Create-from-template failed (HTTP $http_code). See payload above."
+            exit 1
+          fi
         env:
           TOKEN: ${{ steps.app-token.outputs.token }}
           ORG: ${{ github.repository_owner }}
@@ -43,27 +98,32 @@ jobs:
           REPO: ${{ github.event.inputs.repo_name }}
           DESC: ${{ github.event.inputs.description }}
           PRIVATE: ${{ github.event.inputs.private }}
-        run: |
-          curl -sSL -X POST \
-            -H "Authorization: Bearer $TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/${ORG}/${TEMPLATE}/generate \
-            -d "{\"owner\":\"${ORG}\",\"name\":\"${REPO}\",\"private\":${PRIVATE},\"description\":\"${DESC}\"}"
 
-      - name: Wait for new repo
+      - name: Wait for new repo to appear
+        run: |
+          for i in {1..15}; do
+            if curl -fsS -H "Authorization: Bearer $TOKEN" \
+              https://api.github.com/repos/${ORG}/${REPO} >/dev/null; then
+              echo "Repo is live."
+              exit 0
+            fi
+            echo "Waiting… ($i)"
+            sleep 2
+          done
+          echo "::error ::Repo did not appear in time."
+          exit 1
         env:
           TOKEN: ${{ steps.app-token.outputs.token }}
           ORG: ${{ github.repository_owner }}
           REPO: ${{ github.event.inputs.repo_name }}
-        run: |
-          for i in {1..10}; do
-            curl -fsS -H "Authorization: Bearer $TOKEN" \
-              https://api.github.com/repos/${ORG}/${REPO} && exit 0
-            sleep 2
-          done
-          exit 1
 
       - name: Set repo variables (UE paths)
+        run: |
+          gh --version
+          gh auth status || true
+          gh api -X POST repos/${ORG}/${REPO}/actions/variables -f name=UE_ROOT -f value="${UE_ROOT}"
+          gh api -X POST repos/${ORG}/${REPO}/actions/variables -f name=UE_PROJECT_REL -f value="${UE_PROJECT_REL}"
+          gh api -X POST repos/${ORG}/${REPO}/actions/variables -f name=VISUAL_STUDIO_VERSION -f value="${VISUAL_STUDIO_VERSION}"
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           ORG: ${{ github.repository_owner }}
@@ -71,16 +131,12 @@ jobs:
           UE_ROOT: ${{ vars.UE_ROOT }}
           UE_PROJECT_REL: ${{ vars.UE_PROJECT_REL }}
           VISUAL_STUDIO_VERSION: ${{ vars.VISUAL_STUDIO_VERSION }}
-        run: |
-          gh api -X POST repos/${ORG}/${REPO}/actions/variables -f name=UE_ROOT -f value="${UE_ROOT}"
-          gh api -X POST repos/${ORG}/${REPO}/actions/variables -f name=UE_PROJECT_REL -f value="${UE_PROJECT_REL}"
-          gh api -X POST repos/${ORG}/${REPO}/actions/variables -f name=VISUAL_STUDIO_VERSION -f value="${VISUAL_STUDIO_VERSION}"
 
-      - name: Kick bootstrap in child repo
+      - name: Dispatch bootstrap in child repo
+        run: |
+          gh workflow run 10_bootstrap.yml --repo ${ORG}/${REPO} -f plugin_name="${PLUGIN_NAME}"
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           ORG: ${{ github.repository_owner }}
           REPO: ${{ github.event.inputs.repo_name }}
           PLUGIN_NAME: ${{ github.event.inputs.plugin_name }}
-        run: |
-          gh workflow run 10_bootstrap.yml --repo ${ORG}/${REPO} -f plugin_name="${PLUGIN_NAME}"
