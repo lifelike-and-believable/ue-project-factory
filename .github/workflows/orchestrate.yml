@@ -1,80 +1,11 @@
-name: Orchestrate (Minimal)
+name: Orchestrate (Ping)
 
 on:
   workflow_dispatch:
-    inputs:
-      repo_name:
-        description: "New repo name under the org"
-        required: true
-      description:
-        description: "Description"
-        required: false
-      private:
-        description: "Create as private?"
-        type: boolean
-        default: true
-
-permissions:
-  contents: write
-  administration: write
-  actions: write
 
 jobs:
-  create:
+  ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Get app token
-        id: app
-        uses: actions/create-github-app-token@v1
-        with:
-          app-id: ${{ secrets.APP_ID }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
-          installation-id: ${{ secrets.INSTALLATION_ID }}
-
-      - name: Sanity check (whoami)
-        env:
-          TOKEN: ${{ steps.app.outputs.token }}
-        run: |
-          curl -fsS -H "Authorization: Bearer $TOKEN" -H "Accept: application/vnd.github+json" https://api.github.com/app \
-          | jq '{id, slug, name}'
-
-      - name: Ensure template is marked as template
-        env:
-          TOKEN: ${{ steps.app.outputs.token }}
-          ORG: ${{ github.repository_owner }}
-          TEMPLATE: ue-plugin-template
-        run: |
-          curl -fsS -H "Authorization: Bearer $TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$ORG/$TEMPLATE" \
-          | jq -e 'select(.is_template==true)' >/dev/null \
-          || (echo "::error ::$ORG/$TEMPLATE is not a Template repository." && exit 1)
-
-      - name: Create repo from template (one call, no GH CLI)
-        env:
-          TOKEN: ${{ steps.app.outputs.token }}
-          ORG: ${{ github.repository_owner }}
-          TEMPLATE: ue-plugin-template
-          REPO: ${{ github.event.inputs.repo_name }}
-          DESC: ${{ github.event.inputs.description }}
-          PRIVATE: ${{ github.event.inputs.private }}
-        run: |
-          BODY=$(jq -n --arg owner "$ORG" --arg name "$REPO" --arg desc "$DESC" --argjson priv "$PRIVATE" \
-                  '{owner:$owner,name:$name,description:$desc,private:$priv}')
-          echo "Request: $BODY"
-          curl -fsS -X POST \
-            -H "Authorization: Bearer $TOKEN" -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/$ORG/$TEMPLATE/generate" \
-            -d "$BODY" | jq '{full_name, private}'
-
-      - name: Confirm repo exists
-        env:
-          TOKEN: ${{ steps.app.outputs.token }}
-          ORG: ${{ github.repository_owner }}
-          REPO: ${{ github.event.inputs.repo_name }}
-        run: |
-          for i in {1..15}; do
-            if curl -fsS -H "Authorization: Bearer $TOKEN" "https://api.github.com/repos/$ORG/$REPO" | jq '{full_name}'; then
-              exit 0
-            fi
-            echo "Waiting… ($i)"; sleep 2
-          done
-          echo "::error ::Repo did not appear."; exit 1
+      - name: Hello
+        run: echo "Orchestrator is running on $(uname -a)"
