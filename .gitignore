@@ -1,0 +1,7 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyc
+
+# Testing artifacts
+spec.json
