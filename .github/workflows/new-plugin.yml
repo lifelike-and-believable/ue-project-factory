@@ -127,23 +127,18 @@ jobs:
              - Follow Unreal Engine naming conventions (PascalCase, no spaces)
              - Be descriptive of the plugin's purpose
              - Not conflict with common UE plugin names
-             
-             Once chosen, use that name for all subsequent tasks.
           
-          1. Rename all instances of `SamplePlugin` to your chosen plugin name including:
-             - Directory names in `Plugins/`
-             - Source module folders
-             - .uplugin file
-             - All code references
-             - Build.cs files
+          1. **Run the rename script** with your chosen name:
+             ```
+             pwsh Build/Scripts/Rename-Plugin.ps1 -NewPluginName "YourChosenName" -UEVersion "${UE_VERSION}"
+             ```
+             This script will handle all the mechanical renaming of directories, files, and code references.
           
-          2. Update `ProjectSandbox/ProjectSandbox.uproject` to set correct engine version
+          2. Implement the plugin functionality based on the requirements above
           
-          3. Implement the plugin functionality based on the requirements above
+          3. Ensure all tests in `Source/<YourPluginName>Tests/` are updated and pass
           
-          4. Ensure all tests in `Source/<YourPluginName>Tests/` are updated and pass
-          
-          5. Update README.md with plugin-specific documentation
+          4. Update README.md with plugin-specific documentation
           
           ## Build & Test
           The repo has a `pr-ci.yml` workflow that will automatically:
@@ -151,7 +146,7 @@ jobs:
           - Run automation tests
           - Upload artifacts
           
-          Please ensure your implementation will build and pass tests on Windows with UE ${UE_VERSION} installed at `C:\UE\UE_5.6`.
+          Please ensure your implementation will build and pass tests on Windows with UE ${UE_VERSION} installed at `C:\Program Files\Epic Games\UE_5.6`.
           EOF
           else
             cat > issue_body.md << 'EOF'
@@ -166,20 +161,17 @@ jobs:
           - Template Structure: This repo was created from ue-plugin-template
           
           ## Tasks
-          1. Rename all instances of `SamplePlugin` to `${PLUGIN}` including:
-             - Directory names in `Plugins/`
-             - Source module folders
-             - .uplugin file
-             - All code references
-             - Build.cs files
+          1. **Run the rename script first:**
+             ```
+             pwsh Build/Scripts/Rename-Plugin.ps1 -NewPluginName "${PLUGIN}" -UEVersion "${UE_VERSION}"
+             ```
+             This script will handle all the mechanical renaming of directories, files, and code references from `SamplePlugin` to `${PLUGIN}`.
           
-          2. Update `ProjectSandbox/ProjectSandbox.uproject` to set correct engine version
+          2. Implement the plugin functionality based on the requirements above
           
-          3. Implement the plugin functionality based on the requirements above
+          3. Ensure all tests in `Source/${PLUGIN}Tests/` are updated and pass
           
-          4. Ensure all tests in `Source/${PLUGIN}Tests/` are updated and pass
-          
-          5. Update README.md with plugin-specific documentation
+          4. Update README.md with plugin-specific documentation
           
           ## Build & Test
           The repo has a `pr-ci.yml` workflow that will automatically:
@@ -187,7 +179,7 @@ jobs:
           - Run automation tests
           - Upload artifacts
           
-          Please ensure your implementation will build and pass tests on Windows with UE ${UE_VERSION} installed at `C:\UE\UE_5.6`.
+          Please ensure your implementation will build and pass tests on Windows with UE ${UE_VERSION} installed at `C:\Program Files\Epic Games\UE_5.6`.
           EOF
           fi
           
