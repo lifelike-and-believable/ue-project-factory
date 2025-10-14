@@ -211,8 +211,8 @@ jobs:
           
           # Wait up to 5 minutes for a PR to appear from Copilot
           for i in {1..30}; do
-            PR_DATA=$(gh pr list --repo "${{ inputs.org }}/$REPO_NAME" --author app/copilot --json number,headRefName --jq 'if length > 0 then .[0] else null end' 2>/dev/null || echo "null")
-            if [ "$PR_DATA" != "null" ] && [ -n "$PR_DATA" ]; then
+            PR_DATA=$(gh pr list --repo "${{ inputs.org }}/$REPO_NAME" --author app/copilot --json number,headRefName --jq 'if length > 0 then .[0] else empty end' 2>/dev/null || true)
+            if [ -n "$PR_DATA" ]; then
               PR_NUMBER=$(echo "$PR_DATA" | jq -r '.number')
               PR_HEAD_REF=$(echo "$PR_DATA" | jq -r '.headRefName')
               echo "Found PR #$PR_NUMBER from Copilot"
