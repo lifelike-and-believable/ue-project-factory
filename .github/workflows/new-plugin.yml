@@ -19,6 +19,8 @@ name: New UE Plugin Project
         required: false
       requirements_file:
         description: 'Path to requirements file in factory repo (e.g., specs/my-plugin.md) - takes precedence over requirements field'
+      plugin_name:
+        description: 'Optional plugin name (if blank, Copilot will choose)'
         required: false
       requirements:
         description: 'Freeform requirements prompt (used if requirements_file is not provided)'
@@ -72,6 +74,8 @@ jobs:
         id: parse
         env:
           REQ: ${{ steps.load_req.outputs.requirements }}
+          REQ: ${{ inputs.requirements }}
+          PLUGIN_NAME: ${{ inputs.plugin_name }}
         run: |
           python3 scripts/parser.py > spec.json
           echo "plugin_name=$(jq -r .plugin_name spec.json)" >> $GITHUB_OUTPUT
@@ -106,7 +110,52 @@ jobs:
           
           # Construct the problem statement for Copilot Agent using envsubst for safe variable substitution
           export PLUGIN UE_VERSION REQUIREMENTS
-          cat > issue_body.md << 'EOF'
+          
+          if [ "$PLUGIN" = "TBD" ]; then
+            cat > issue_body.md << 'EOF'
+          # Implement Unreal Engine Plugin
+          
+          ## Requirements
+          ${REQUIREMENTS}
+          
+          ## Technical Context
+          - Unreal Engine Version: ${UE_VERSION}
+          - Target Platforms: Win64
+          - Template Structure: This repo was created from ue-plugin-template
+          
+          ## Tasks
+          0. **Choose an appropriate plugin name** based on the requirements above. The name should:
+             - Follow Unreal Engine naming conventions (PascalCase, no spaces)
+             - Be descriptive of the plugin's purpose
+             - Not conflict with common UE plugin names
+             
+             Once chosen, use that name for all subsequent tasks.
+          
+          1. Rename all instances of `SamplePlugin` to your chosen plugin name including:
+             - Directory names in `Plugins/`
+             - Source module folders
+             - .uplugin file
+             - All code references
+             - Build.cs files
+          
+          2. Update `ProjectSandbox/ProjectSandbox.uproject` to set correct engine version
+          
+          3. Implement the plugin functionality based on the requirements above
+          
+          4. Ensure all tests in `Source/<YourPluginName>Tests/` are updated and pass
+          
+          5. Update README.md with plugin-specific documentation
+          
+          ## Build & Test
+          The repo has a `pr-ci.yml` workflow that will automatically:
+          - Build the plugin using UAT
+          - Run automation tests
+          - Upload artifacts
+          
+          Please ensure your implementation will build and pass tests on Windows with UE ${UE_VERSION} installed at `C:\UE\UE_5.6`.
+          EOF
+          else
+            cat > issue_body.md << 'EOF'
           # Implement Unreal Engine Plugin: ${PLUGIN}
           
           ## Requirements
@@ -141,6 +190,7 @@ jobs:
           
           Please ensure your implementation will build and pass tests on Windows with UE ${UE_VERSION} installed at `C:\UE\UE_5.6`.
           EOF
+          fi
           
           # Use envsubst for safe variable substitution
           envsubst < issue_body.md > issue_body_final.md
