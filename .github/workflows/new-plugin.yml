@@ -1,5 +1,5 @@
 name: New UE Plugin Project
-on:
+'on':
   workflow_dispatch:
     inputs:
       org:
