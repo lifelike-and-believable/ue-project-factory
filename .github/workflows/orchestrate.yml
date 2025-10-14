@@ -1,11 +1,28 @@
-name: Orchestrate (Ping)
+name: Orchestrate (Auth Smoke)
 
 on:
   workflow_dispatch:
 
 jobs:
-  ping:
+  auth:
     runs-on: ubuntu-latest
     steps:
-      - name: Hello
-        run: echo "Orchestrator is running on $(uname -a)"
+      - name: Show secrets presence (not values)
+        run: |
+          for k in APP_ID APP_PRIVATE_KEY INSTALLATION_ID; do
+            if [ -n "${{ secrets[k] }}" ]; then echo "$k=present"; else echo "$k=ABSENT"; fi
+          done
+
+      - name: Get App Token
+        id: app
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          installation-id: ${{ secrets.INSTALLATION_ID }}
+
+      - name: Who am I (App)
+        env:
+          TOKEN: ${{ steps.app.outputs.token }}
+        run: |
+          curl -fsS -H "Authorization: Bearer $TOKEN" -H "Accept: application/vnd.github+json" https://api.github.com/app | jq '{id,slug,name}' || true
