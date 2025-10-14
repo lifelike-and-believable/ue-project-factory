@@ -41,7 +41,7 @@ jobs:
           if ! command -v gh >/dev/null; then
             type -p curl >/dev/null && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
             sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
-            echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/gi[...]
             sudo apt update && sudo apt install gh -y
           fi
       - name: Authenticate gh
@@ -74,7 +74,6 @@ jobs:
         id: parse
         env:
           REQ: ${{ steps.load_req.outputs.requirements }}
-          REQ: ${{ inputs.requirements }}
           PLUGIN_NAME: ${{ inputs.plugin_name }}
         run: |
           python3 scripts/parser.py > spec.json
