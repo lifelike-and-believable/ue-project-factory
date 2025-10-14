@@ -88,8 +88,12 @@ fi
 echo "Replacing text references to SamplePlugin with $PLUGIN..."
 # Use -z and xargs -0 to handle filenames with spaces safely
 if git grep -l --untracked "SamplePlugin" > /dev/null 2>&1; then
-  git grep -l --untracked -z "SamplePlugin" 2>/dev/null | xargs -0 -r sed -i "s/SamplePlugin/$PLUGIN/g"
-  echo "Text replacement completed successfully"
+  if git grep -l --untracked -z "SamplePlugin" 2>/dev/null | xargs -0 -r sed -i "s/SamplePlugin/$PLUGIN/g"; then
+    echo "Text replacement completed successfully"
+  else
+    echo "ERROR: Text replacement failed"
+    exit 1
+  fi
 else
   echo "WARNING: No files found containing 'SamplePlugin' to replace"
 fi
