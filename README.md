@@ -23,6 +23,14 @@ The workflow uses GitHub Copilot Coding Agent to implement the plugin based on y
 4. Ensures tests pass
 5. Opens a PR for review
 
+## Plugin Naming
+You can specify the plugin name in three ways:
+1. **Explicit input**: Provide a plugin name in the `plugin_name` field (optional)
+2. **Pattern in requirements**: Include "plugin called YourName" in your requirements
+3. **Let Copilot choose**: Leave plugin name blank and don't use a pattern - Copilot will choose an appropriate name
+
+If no plugin name is provided, the parser will default to 'TBD' and Copilot will be asked to choose an appropriate name based on the requirements.
+
 ## Notes
 - The parser extracts plugin name and UE version from your requirements
 - GitHub Copilot Coding Agent requires appropriate subscription (Pro, Pro+, Business, or Enterprise)
