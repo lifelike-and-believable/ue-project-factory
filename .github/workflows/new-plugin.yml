@@ -211,11 +211,11 @@ jobs:
           
           # Wait up to 5 minutes for a PR to appear from Copilot
           for i in {1..30}; do
-            PR_NUMBER=$(gh pr list --repo "${{ inputs.org }}/$REPO_NAME" --author app/copilot --json number,headRefName --jq '.[0].number' 2>/dev/null || echo "")
-            if [ -n "$PR_NUMBER" ]; then
+            PR_DATA=$(gh pr list --repo "${{ inputs.org }}/$REPO_NAME" --author app/copilot --json number,headRefName --jq 'if length > 0 then .[0] else null end' 2>/dev/null || echo "null")
+            if [ "$PR_DATA" != "null" ] && [ -n "$PR_DATA" ]; then
+              PR_NUMBER=$(echo "$PR_DATA" | jq -r '.number')
+              PR_HEAD_REF=$(echo "$PR_DATA" | jq -r '.headRefName')
               echo "Found PR #$PR_NUMBER from Copilot"
-              # Get the head ref for filtering workflow runs
-              PR_HEAD_REF=$(gh pr view "$PR_NUMBER" --repo "${{ inputs.org }}/$REPO_NAME" --json headRefName --jq '.headRefName')
               echo "PR branch: $PR_HEAD_REF"
               break
             fi
@@ -233,8 +233,10 @@ jobs:
           sleep 20
           
           # Check for workflow runs requiring approval on the PR branch
+          # URL encode the branch name to handle special characters
+          ENCODED_BRANCH=$(printf '%s' "$PR_HEAD_REF" | jq -sRr @uri)
           for i in {1..10}; do
-            RUNS=$(gh api "repos/${{ inputs.org }}/$REPO_NAME/actions/runs?status=action_required&branch=$PR_HEAD_REF" --jq '.workflow_runs[] | select(.conclusion == null) | .id')
+            RUNS=$(gh api "repos/${{ inputs.org }}/$REPO_NAME/actions/runs?status=action_required&branch=$ENCODED_BRANCH" --jq '.workflow_runs[] | select(.conclusion == null) | .id')
             
             if [ -n "$RUNS" ]; then
               for RUN_ID in $RUNS; do
