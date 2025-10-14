@@ -43,12 +43,13 @@ jobs:
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
           installation-id: ${{ secrets.INSTALLATION_ID }}
 
-      - name: Sanity check: whoami (App)
+      - name: Sanity check Whoami (App)
+        env:
+          TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           curl -fsS -H "Authorization: Bearer $TOKEN" -H "Accept: application/vnd.github+json" \
             https://api.github.com/app | jq '{id, slug, name, owner}'
-        env:
-          TOKEN: ${{ steps.app-token.outputs.token }}
+
 
       - name: Check installation visibility of template repo
         run: |
