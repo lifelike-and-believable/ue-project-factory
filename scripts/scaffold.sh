@@ -15,7 +15,7 @@ if [ -z "$REPO_NAME" ]; then
   REPO_NAME="ue-$SLUG"
 fi
 gh repo create "$ORG/$REPO_NAME" --$VISIBILITY --template "$TEMPLATE"
-git clone "https://github.com/$ORG/$REPO_NAME.git"
+git clone "https://$GH_TOKEN@github.com/$ORG/$REPO_NAME.git"
 cd "$REPO_NAME"
 
 mv Plugins/SamplePlugin "Plugins/$PLUGIN"
