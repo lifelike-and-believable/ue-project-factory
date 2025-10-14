@@ -58,7 +58,11 @@ jobs:
             echo "Loaded requirements from file: ${{ inputs.requirements_file }}"
           else
             REQ="${{ inputs.requirements }}"
-            echo "Using inline requirements"
+            if [ -z "$REQ" ]; then
+              echo "Warning: No requirements provided. Parser will use defaults (AutoPlugin, UE 5.6)"
+            else
+              echo "Using inline requirements"
+            fi
           fi
           # Use heredoc to safely handle multiline content
           echo "requirements<<EOF" >> $GITHUB_OUTPUT
@@ -68,7 +72,6 @@ jobs:
         id: parse
         env:
           REQ: ${{ steps.load_req.outputs.requirements }}
-          PLUGIN_NAME: ${{ inputs.plugin_name }}
         run: |
           python3 scripts/parser.py > spec.json
           echo "plugin_name=$(jq -r .plugin_name spec.json)" >> $GITHUB_OUTPUT
