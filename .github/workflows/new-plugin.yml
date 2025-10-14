@@ -79,20 +79,21 @@ jobs:
           UE_VERSION="${{ steps.parse.outputs.ue_version }}"
           REQUIREMENTS="${{ inputs.requirements }}"
           
-          # Construct the problem statement for Copilot Agent
+          # Construct the problem statement for Copilot Agent using envsubst for safe variable substitution
+          export PLUGIN UE_VERSION REQUIREMENTS
           cat > issue_body.md << 'EOF'
-          # Implement Unreal Engine Plugin: $PLUGIN
+          # Implement Unreal Engine Plugin: ${PLUGIN}
           
           ## Requirements
-          $REQUIREMENTS
+          ${REQUIREMENTS}
           
           ## Technical Context
-          - Unreal Engine Version: $UE_VERSION
+          - Unreal Engine Version: ${UE_VERSION}
           - Target Platforms: Win64
           - Template Structure: This repo was created from ue-plugin-template
           
           ## Tasks
-          1. Rename all instances of `SamplePlugin` to `$PLUGIN` including:
+          1. Rename all instances of `SamplePlugin` to `${PLUGIN}` including:
              - Directory names in `Plugins/`
              - Source module folders
              - .uplugin file
@@ -103,7 +104,7 @@ jobs:
           
           3. Implement the plugin functionality based on the requirements above
           
-          4. Ensure all tests in `Source/$PLUGINTests/` are updated and pass
+          4. Ensure all tests in `Source/${PLUGIN}Tests/` are updated and pass
           
           5. Update README.md with plugin-specific documentation
           
@@ -113,13 +114,12 @@ jobs:
           - Run automation tests
           - Upload artifacts
           
-          Please ensure your implementation will build and pass tests on Windows with UE $UE_VERSION installed at `C:\UE\UE_5.6`.
+          Please ensure your implementation will build and pass tests on Windows with UE ${UE_VERSION} installed at `C:\UE\UE_5.6`.
           EOF
           
-          # Replace variables in the issue body
-          sed -i "s/\$PLUGIN/$PLUGIN/g" issue_body.md
-          sed -i "s/\$UE_VERSION/$UE_VERSION/g" issue_body.md
-          sed -i "s/\$REQUIREMENTS/$REQUIREMENTS/g" issue_body.md
+          # Use envsubst for safe variable substitution
+          envsubst < issue_body.md > issue_body_final.md
+          mv issue_body_final.md issue_body.md
           
           # Create the issue and assign to @copilot
           echo "Creating issue in ${{ inputs.org }}/$REPO_NAME"
