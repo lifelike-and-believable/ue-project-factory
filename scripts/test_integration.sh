@@ -99,7 +99,9 @@ UE_VERSION="5.4"
 
 echo -n "  Testing file content replacement... "
 # Use the same logic as the workflow (safe handling with xargs -r)
-git grep -lz "SamplePlugin" 2>/dev/null | xargs -0 -r sed -i "s/SamplePlugin/$PLUGIN_NAME/g"
+# Escape special characters in PLUGIN_NAME for use in sed replacement string
+PLUGIN_NAME_ESCAPED=$(printf '%s\n' "$PLUGIN_NAME" | sed 's/[&/\]/\\&/g')
+git grep -lz "SamplePlugin" 2>/dev/null | xargs -0 -r sed -i "s/SamplePlugin/$PLUGIN_NAME_ESCAPED/g"
 # Verify replacement succeeded (in this test, we know files exist, so check for the new name)
 if git grep -q "IntegrationTest" > /dev/null 2>&1; then
   echo "✓"

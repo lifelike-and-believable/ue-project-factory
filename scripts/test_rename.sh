@@ -123,8 +123,11 @@ fi
 
 # Replace all occurrences of SamplePlugin with the new plugin name in files first
 # (before renaming, so git grep can find tracked files)
+# Escape special characters in PLUGIN_NAME for use in sed replacement string
+PLUGIN_NAME_ESCAPED=$(printf '%s\n' "$PLUGIN_NAME" | sed 's/[&/\]/\\&/g')
+
 # Use -z and xargs -0 to handle filenames with special characters safely
-if git grep -lz "SamplePlugin" 2>/dev/null | xargs -0 -r sed -i "s/SamplePlugin/$PLUGIN_NAME/g"; then
+if git grep -lz "SamplePlugin" 2>/dev/null | xargs -0 -r sed -i "s/SamplePlugin/$PLUGIN_NAME_ESCAPED/g"; then
   echo "✓ Replaced SamplePlugin references in file contents"
 else
   echo "⚠ No SamplePlugin references found in tracked files (may be expected)"
