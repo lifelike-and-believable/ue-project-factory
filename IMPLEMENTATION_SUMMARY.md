@@ -193,6 +193,51 @@ bash scripts/test_integration.sh
    - Improved git grep with -z and xargs -0 for safer filename handling
    - Added informative logging for each rename operation
    - Enhanced resilience for templates with optional directories
+8. **Bug Fix: Sed Special Character Escaping** (2025-10-15)
+   - Fixed critical bug where plugin names with special characters (`&`, `/`, `\`) would cause incorrect replacements
+   - Added proper escaping of plugin names before sed replacement
+   - Added comprehensive test coverage for special characters
+   - Enhanced logging to show file count and verification results
+   - Added post-rename verification to catch issues early
+
+## Bug Fixes and Improvements
+
+### Sed Special Character Escaping (October 2025)
+
+**Problem Identified**: The original sed replacement command was vulnerable to special characters in plugin names:
+```bash
+sed -i "s/SamplePlugin/$PLUGIN_NAME/g"  # Unsafe!
+```
+
+**Issues This Caused**:
+- Plugin names with `&` would expand incorrectly (e.g., "Test&2" → "TestSamplePlugin2")
+- Plugin names with `/` would break sed syntax
+- Plugin names with `\` would trigger escape sequence errors
+
+**Solution Implemented**:
+```bash
+# Escape special characters before sed replacement
+PLUGIN_NAME_ESCAPED=$(printf '%s\n' "$PLUGIN_NAME" | sed 's/[&/\]/\\&/g')
+sed -i "s/SamplePlugin/$PLUGIN_NAME_ESCAPED/g"  # Safe!
+```
+
+**Files Updated**:
+- `.github/workflows/new-plugin.yml` - Main workflow
+- `scripts/test_rename.sh` - Test script
+- `scripts/test_integration.sh` - Integration tests
+- `scripts/test_rename_special_chars.sh` - New comprehensive test suite
+
+**Enhanced Logging**: Added file count reporting and post-rename verification:
+- Shows number of files being modified
+- Verifies plugin directory and descriptor exist after rename
+- Checks that old "SamplePlugin" references are removed
+- Provides clear error messages if verification fails
+
+**Test Coverage**: New test suite validates:
+- Normal plugin names (baseline)
+- Names with numbers
+- Escaping function correctness
+- All test suites continue to pass
 
 ## Conclusion
 

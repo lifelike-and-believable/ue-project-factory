@@ -153,11 +153,17 @@ jobs:
           # Escape special characters in PLUGIN_NAME for use in sed replacement string
           PLUGIN_NAME_ESCAPED=$(printf '%s\n' "$PLUGIN_NAME" | sed 's/[&/\]/\\&/g')
           
+          # Count files before replacement for better logging
+          FILE_COUNT=$(git grep -lz "SamplePlugin" 2>/dev/null | tr '\0' '\n' | wc -l)
+          
           # Use -z and xargs -0 to handle filenames with special characters safely
-          if git grep -lz "SamplePlugin" 2>/dev/null | xargs -0 -r sed -i "s/SamplePlugin/$PLUGIN_NAME_ESCAPED/g"; then
+          if [ "$FILE_COUNT" -gt 0 ]; then
+            echo "Found $FILE_COUNT file(s) containing 'SamplePlugin'"
+            git grep -lz "SamplePlugin" 2>/dev/null | xargs -0 sed -i "s/SamplePlugin/$PLUGIN_NAME_ESCAPED/g"
             echo "✓ Replaced SamplePlugin references in file contents"
           else
-            echo "⚠ No SamplePlugin references found in tracked files (may be expected)"
+            echo "⚠ No SamplePlugin references found in tracked files"
+            echo "This may indicate an issue with the template structure or that the template has already been customized"
           fi
           
           # Rename plugin folder
@@ -208,6 +214,32 @@ jobs:
             echo "✓ Updated UE version in project file"
           fi
           
+          # Verify rename was successful
+          echo ""
+          echo "Verification:"
+          if [ -d "Plugins/$PLUGIN_NAME" ]; then
+            echo "✓ Plugin directory: Plugins/$PLUGIN_NAME"
+          else
+            echo "✗ ERROR: Plugin directory not found: Plugins/$PLUGIN_NAME"
+            exit 1
+          fi
+          
+          if [ -f "Plugins/$PLUGIN_NAME/${PLUGIN_NAME}.uplugin" ]; then
+            echo "✓ Plugin descriptor: Plugins/$PLUGIN_NAME/${PLUGIN_NAME}.uplugin"
+          else
+            echo "✗ ERROR: Plugin descriptor not found: Plugins/$PLUGIN_NAME/${PLUGIN_NAME}.uplugin"
+            exit 1
+          fi
+          
+          # Check if old name still exists (it shouldn't)
+          if git grep -q "SamplePlugin" 2>/dev/null; then
+            echo "⚠ WARNING: 'SamplePlugin' still found in some files:"
+            git grep "SamplePlugin" | head -10
+          else
+            echo "✓ Old plugin name removed from all tracked files"
+          fi
+          
+          echo ""
           echo "✓ Plugin renamed successfully"
       
       - name: Commit and push rename changes
