@@ -56,7 +56,7 @@ The automation for plugin name replacement is **fully implemented and tested**. 
 - Accepts explicit `PLUGIN_NAME` environment variable (highest priority)
 - Extracts from "plugin called X" pattern in requirements
 - Auto-derives from requirements using patterns:
-  - "create a {name} plugin" / "build a {name} plugin" / "implement a {name} plugin"
+  - "create a/an {name} plugin", "build a/an {name} plugin", "implement a/an {name} plugin"
   - First line/title if no pattern matches
 - Converts to PascalCase alphanumeric format
 - Validates against UE naming conventions (`^[A-Z][A-Za-z0-9]*$`)
@@ -75,7 +75,7 @@ The automation for plugin name replacement is **fully implemented and tested**. 
   - Explicit plugin name input
   - Pattern extraction ("plugin called X")
   - Auto-derivation from markdown headings
-  - Auto-derivation using patterns: "create a {name} plugin", "build an {name} plugin", "implement a {name} plugin"
+  - Auto-derivation using patterns: "create a/an {name} plugin", "build a/an {name} plugin", "implement a/an {name} plugin"
   - Multi-level fallback: pattern match → first line as title → "NewPlugin" default
   - UE version extraction and defaults
 
