@@ -99,6 +99,19 @@ jobs:
           
           echo "REPO_NAME=$REPO_NAME" >> $GITHUB_ENV
           
+      - name: Add FACTORY_ADMIN_TOKEN secret to new repo
+        env:
+          GH_TOKEN: ${{ secrets.FACTORY_ADMIN_TOKEN }}
+        run: |
+          echo "Adding FACTORY_ADMIN_TOKEN secret to new repository..."
+          
+          # Add the secret to the newly created repo using gh CLI
+          echo "${{ secrets.FACTORY_ADMIN_TOKEN }}" | gh secret set FACTORY_ADMIN_TOKEN \
+            --repo "${{ inputs.org }}/$REPO_NAME" \
+            --body -
+          
+          echo "✓ Secret added successfully to ${{ inputs.org }}/$REPO_NAME"
+          
       - name: Create issue and assign to Copilot Agent
         env:
           GH_TOKEN: ${{ secrets.FACTORY_ADMIN_TOKEN }}
