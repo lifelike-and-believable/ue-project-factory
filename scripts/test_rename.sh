@@ -123,12 +123,16 @@ fi
 
 # Replace all occurrences of SamplePlugin with the new plugin name in files first
 # (before renaming, so git grep can find tracked files)
-if git grep -l "SamplePlugin" > /dev/null; then
-  git grep -l "SamplePlugin" | xargs sed -i "s/SamplePlugin/$PLUGIN_NAME/g"
+# Use -z and xargs -0 to handle filenames with special characters safely
+if git grep -lz "SamplePlugin" 2>/dev/null | xargs -0 -r sed -i "s/SamplePlugin/$PLUGIN_NAME/g"; then
+  echo "✓ Replaced SamplePlugin references in file contents"
+else
+  echo "⚠ No SamplePlugin references found in tracked files (may be expected)"
 fi
 
 # Rename plugin folder
 mv Plugins/SamplePlugin "Plugins/$PLUGIN_NAME"
+echo "✓ Renamed plugin folder"
 
 # Rename module source files in each directory before renaming the directories
 # This ensures files like SamplePlugin.cpp become PluginName.cpp
@@ -140,21 +144,39 @@ for module_dir in "Plugins/$PLUGIN_NAME/Source/SamplePlugin" "Plugins/$PLUGIN_NA
       if [ -f "$module_dir/$module_basename.$ext" ]; then
         new_module_name=$(echo "$module_basename" | sed "s/SamplePlugin/$PLUGIN_NAME/g")
         mv "$module_dir/$module_basename.$ext" "$module_dir/$new_module_name.$ext"
+        echo "✓ Renamed $module_basename.$ext to $new_module_name.$ext"
       fi
     done
   fi
 done
 
-# Rename source folders
-mv "Plugins/$PLUGIN_NAME/Source/SamplePlugin" "Plugins/$PLUGIN_NAME/Source/$PLUGIN_NAME"
-mv "Plugins/$PLUGIN_NAME/Source/SamplePluginEditor" "Plugins/$PLUGIN_NAME/Source/${PLUGIN_NAME}Editor"
-mv "Plugins/$PLUGIN_NAME/Source/SamplePluginTests" "Plugins/$PLUGIN_NAME/Source/${PLUGIN_NAME}Tests"
+# Rename source folders (only if they exist)
+if [ -d "Plugins/$PLUGIN_NAME/Source/SamplePlugin" ]; then
+  mv "Plugins/$PLUGIN_NAME/Source/SamplePlugin" "Plugins/$PLUGIN_NAME/Source/$PLUGIN_NAME"
+  echo "✓ Renamed source folder: SamplePlugin -> $PLUGIN_NAME"
+fi
 
-# Rename .uplugin file
-mv "Plugins/$PLUGIN_NAME/SamplePlugin.uplugin" "Plugins/$PLUGIN_NAME/${PLUGIN_NAME}.uplugin"
+if [ -d "Plugins/$PLUGIN_NAME/Source/SamplePluginEditor" ]; then
+  mv "Plugins/$PLUGIN_NAME/Source/SamplePluginEditor" "Plugins/$PLUGIN_NAME/Source/${PLUGIN_NAME}Editor"
+  echo "✓ Renamed source folder: SamplePluginEditor -> ${PLUGIN_NAME}Editor"
+fi
 
-# Update UE version in project file
-sed -i "s/\"EngineAssociation\": \"5.6\"/\"EngineAssociation\": \"$UE_VERSION\"/g" ProjectSandbox/ProjectSandbox.uproject
+if [ -d "Plugins/$PLUGIN_NAME/Source/SamplePluginTests" ]; then
+  mv "Plugins/$PLUGIN_NAME/Source/SamplePluginTests" "Plugins/$PLUGIN_NAME/Source/${PLUGIN_NAME}Tests"
+  echo "✓ Renamed source folder: SamplePluginTests -> ${PLUGIN_NAME}Tests"
+fi
+
+# Rename .uplugin file (only if it exists)
+if [ -f "Plugins/$PLUGIN_NAME/SamplePlugin.uplugin" ]; then
+  mv "Plugins/$PLUGIN_NAME/SamplePlugin.uplugin" "Plugins/$PLUGIN_NAME/${PLUGIN_NAME}.uplugin"
+  echo "✓ Renamed .uplugin file"
+fi
+
+# Update UE version in project file (only if it exists)
+if [ -f "ProjectSandbox/ProjectSandbox.uproject" ]; then
+  sed -i "s/\"EngineAssociation\": \"5.6\"/\"EngineAssociation\": \"$UE_VERSION\"/g" ProjectSandbox/ProjectSandbox.uproject
+  echo "✓ Updated UE version in project file"
+fi
 
 echo "✓ Plugin renamed successfully"
 
