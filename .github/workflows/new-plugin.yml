@@ -172,6 +172,7 @@ jobs:
           
           # Rename module source files in each directory before renaming the directories
           # This ensures files like SamplePlugin.cpp become PluginName.cpp
+          # Note: Uses PLUGIN_NAME_ESCAPED from above to handle special characters
           for module_dir in "Plugins/$PLUGIN_NAME/Source/SamplePlugin" "Plugins/$PLUGIN_NAME/Source/SamplePluginEditor" "Plugins/$PLUGIN_NAME/Source/SamplePluginTests"; do
             if [ -d "$module_dir" ]; then
               module_basename=$(basename "$module_dir")
