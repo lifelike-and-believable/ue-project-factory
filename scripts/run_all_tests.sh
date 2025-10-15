@@ -25,8 +25,20 @@ else
   echo ""
 fi
 
-# Test 2: Rename logic tests
-echo "2. Rename Logic Tests"
+# Test 2: Requirements File Handling Tests
+echo "2. Requirements File Handling Tests"
+echo "------------------------------------"
+if python3 scripts/test_requirements_file.py; then
+  TOTAL_PASSED=$((TOTAL_PASSED + 1))
+  echo ""
+else
+  TOTAL_FAILED=$((TOTAL_FAILED + 1))
+  echo "✗ Requirements file tests failed"
+  echo ""
+fi
+
+# Test 3: Rename logic tests
+echo "3. Rename Logic Tests"
 echo "---------------------"
 if bash scripts/test_rename.sh 2>&1 | grep -v "^hint:" | grep -v "^Initialized" | grep -v "^\[master"; then
   TOTAL_PASSED=$((TOTAL_PASSED + 1))
@@ -37,8 +49,20 @@ else
   echo ""
 fi
 
-# Test 3: Integration tests
-echo "3. Integration Tests"
+# Test 4: Workflow simulation tests
+echo "4. Workflow Simulation Tests"
+echo "-----------------------------"
+if bash scripts/test_workflow_simulation.sh; then
+  TOTAL_PASSED=$((TOTAL_PASSED + 1))
+  echo ""
+else
+  TOTAL_FAILED=$((TOTAL_FAILED + 1))
+  echo "✗ Workflow simulation tests failed"
+  echo ""
+fi
+
+# Test 5: Integration tests
+echo "5. Integration Tests"
 echo "--------------------"
 if bash scripts/test_integration.sh; then
   TOTAL_PASSED=$((TOTAL_PASSED + 1))
@@ -53,8 +77,8 @@ fi
 echo "================================================"
 echo "  Test Summary"
 echo "================================================"
-echo "Test Suites Passed: $TOTAL_PASSED/3"
-echo "Test Suites Failed: $TOTAL_FAILED/3"
+echo "Test Suites Passed: $TOTAL_PASSED/5"
+echo "Test Suites Failed: $TOTAL_FAILED/5"
 echo ""
 
 if [ $TOTAL_FAILED -eq 0 ]; then

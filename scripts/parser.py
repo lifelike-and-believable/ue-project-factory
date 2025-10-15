@@ -1,7 +1,14 @@
 # Stub parser that turns requirements into a spec.json-like output.
 import os, json, re
 
-req = os.environ.get('REQ','')
+# Read requirements from file if REQUIREMENTS_FILE is set, otherwise from REQ env var
+requirements_file = os.environ.get('REQUIREMENTS_FILE', '')
+if requirements_file and os.path.exists(requirements_file):
+    with open(requirements_file, 'r') as f:
+        req = f.read()
+else:
+    req = os.environ.get('REQ', '')
+
 name = os.environ.get('PLUGIN_NAME', '').strip()
 ue_version_input = os.environ.get('UE_VERSION', '').strip()
 ue_version = ue_version_input if ue_version_input else '5.6'  # Default version

@@ -7,6 +7,7 @@ __pycache__/
 spec.json
 issue_body.md
 issue_body_final.md
+requirements.txt
 
 # Temporary clones
 new-repo/
