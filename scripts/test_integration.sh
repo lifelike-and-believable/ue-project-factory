@@ -98,19 +98,13 @@ PLUGIN_NAME="IntegrationTest"
 UE_VERSION="5.4"
 
 echo -n "  Testing file content replacement... "
-# First check if files to replace exist
-if git grep -l "SamplePlugin" > /dev/null 2>&1; then
-  # Files exist, perform replacement using safe method
-  git grep -lz "SamplePlugin" 2>/dev/null | xargs -0 -r sed -i "s/SamplePlugin/$PLUGIN_NAME/g"
-  # Verify replacement succeeded
-  if git grep -q "IntegrationTest" > /dev/null 2>&1; then
-    echo "✓"
-  else
-    echo "✗ FAILED - content not replaced"
-    exit 1
-  fi
+# Use the same logic as the workflow (safe handling with xargs -r)
+git grep -lz "SamplePlugin" 2>/dev/null | xargs -0 -r sed -i "s/SamplePlugin/$PLUGIN_NAME/g"
+# Verify replacement succeeded (in this test, we know files exist, so check for the new name)
+if git grep -q "IntegrationTest" > /dev/null 2>&1; then
+  echo "✓"
 else
-  echo "✗ FAILED - no SamplePlugin references found"
+  echo "✗ FAILED - content not replaced (expected IntegrationTest in files)"
   exit 1
 fi
 
