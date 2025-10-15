@@ -132,36 +132,41 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           echo "✓ Repository cloned successfully"
       
-      - name: Setup PowerShell Core
-        run: |
-          # Ubuntu runners should have pwsh pre-installed
-          pwsh --version || {
-            echo "Installing PowerShell Core..."
-            wget -q https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/packages-microsoft-prod.deb
-            sudo dpkg -i packages-microsoft-prod.deb
-            sudo apt-get update
-            sudo apt-get install -y powershell
-          }
-          echo "✓ PowerShell Core is available"
-      
-      - name: Run plugin rename script
+      - name: Rename plugin files and folders
         run: |
           cd new-repo
           PLUGIN_NAME="${{ steps.parse.outputs.plugin_name }}"
           UE_VERSION="${{ steps.parse.outputs.ue_version }}"
           
-          echo "Running rename script with plugin name: $PLUGIN_NAME and UE version: $UE_VERSION"
+          echo "Renaming plugin from SamplePlugin to $PLUGIN_NAME for UE $UE_VERSION"
           
-          # Check if the rename script exists
-          if [ ! -f "Build/Scripts/Rename-Plugin.ps1" ]; then
-            echo "Warning: Rename-Plugin.ps1 not found in template. Skipping rename."
-            echo "RENAME_SKIPPED=true" >> $GITHUB_ENV
-          else
-            # Run the rename script
-            pwsh -Command "& ./Build/Scripts/Rename-Plugin.ps1 -NewPluginName '$PLUGIN_NAME' -UEVersion '$UE_VERSION' -RepoRoot '$PWD'"
-            echo "✓ Rename script completed"
-            echo "RENAME_SKIPPED=false" >> $GITHUB_ENV
+          # Rename plugin directories and files
+          # Check if the expected template structure exists
+          if [ ! -d "Plugins/SamplePlugin" ]; then
+            echo "Error: Expected template structure not found (Plugins/SamplePlugin missing)"
+            echo "Template may not be compatible with this factory workflow"
+            exit 1
           fi
+          
+          # Replace all occurrences of SamplePlugin with the new plugin name in files first
+          # (before renaming, so git grep can find tracked files)
+          git grep -l "SamplePlugin" | xargs sed -i "s/SamplePlugin/$PLUGIN_NAME/g"
+          
+          # Rename plugin folder
+          mv Plugins/SamplePlugin "Plugins/$PLUGIN_NAME"
+          
+          # Rename source folders
+          mv "Plugins/$PLUGIN_NAME/Source/SamplePlugin" "Plugins/$PLUGIN_NAME/Source/$PLUGIN_NAME"
+          mv "Plugins/$PLUGIN_NAME/Source/SamplePluginEditor" "Plugins/$PLUGIN_NAME/Source/${PLUGIN_NAME}Editor"
+          mv "Plugins/$PLUGIN_NAME/Source/SamplePluginTests" "Plugins/$PLUGIN_NAME/Source/${PLUGIN_NAME}Tests"
+          
+          # Rename .uplugin file
+          mv "Plugins/$PLUGIN_NAME/SamplePlugin.uplugin" "Plugins/$PLUGIN_NAME/${PLUGIN_NAME}.uplugin"
+          
+          # Update UE version in project file
+          sed -i "s/\"EngineAssociation\": \"5.6\"/\"EngineAssociation\": \"$UE_VERSION\"/g" ProjectSandbox/ProjectSandbox.uproject
+          
+          echo "✓ Plugin renamed successfully"
       
       - name: Commit and push rename changes
         env:
