@@ -49,8 +49,20 @@ else
   echo ""
 fi
 
-# Test 4: Integration tests
-echo "4. Integration Tests"
+# Test 4: Workflow simulation tests
+echo "4. Workflow Simulation Tests"
+echo "-----------------------------"
+if bash scripts/test_workflow_simulation.sh; then
+  TOTAL_PASSED=$((TOTAL_PASSED + 1))
+  echo ""
+else
+  TOTAL_FAILED=$((TOTAL_FAILED + 1))
+  echo "✗ Workflow simulation tests failed"
+  echo ""
+fi
+
+# Test 5: Integration tests
+echo "5. Integration Tests"
 echo "--------------------"
 if bash scripts/test_integration.sh; then
   TOTAL_PASSED=$((TOTAL_PASSED + 1))
@@ -65,8 +77,8 @@ fi
 echo "================================================"
 echo "  Test Summary"
 echo "================================================"
-echo "Test Suites Passed: $TOTAL_PASSED/4"
-echo "Test Suites Failed: $TOTAL_FAILED/4"
+echo "Test Suites Passed: $TOTAL_PASSED/5"
+echo "Test Suites Failed: $TOTAL_FAILED/5"
 echo ""
 
 if [ $TOTAL_FAILED -eq 0 ]; then
