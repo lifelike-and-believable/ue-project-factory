@@ -73,8 +73,8 @@ The automation for plugin name replacement is **fully implemented and tested**. 
   - Explicit plugin name input
   - Pattern extraction ("plugin called X")
   - Auto-derivation from markdown headings
-  - Auto-derivation from sentence patterns
-  - Fallback behavior
+  - Auto-derivation from requirement text patterns (create/build/implement)
+  - Fallback behavior (first line as title, default to "NewPlugin")
   - UE version extraction and defaults
 
 #### Rename Tests (`scripts/test_rename.sh`)
@@ -143,26 +143,21 @@ inputs:
 ```
 Result: Plugin name and version derived from file content
 
-## Test Results
+## Test Coverage
 
-All test suites pass successfully:
+The implementation includes comprehensive test coverage:
 
+- **Parser Unit Tests**: 18 test cases covering all input modes and edge cases
+- **Rename Logic Tests**: Complete validation of file/folder rename operations
+- **Integration Tests**: 5 test categories validating end-to-end functionality
+
+Run the test suite to verify:
+```bash
+./scripts/run_all_tests.sh
 ```
-=== Parser Unit Tests ===
-Passed: 18/18
-Failed: 0/18
 
-=== Rename Logic Tests ===
-✓ All rename operations completed successfully!
-
-=== Integration Tests ===
-✓ Parser handles multiple input modes
-✓ Rename operations work correctly
-✓ Workflow YAML is valid
-✓ Requirements file support works
-✓ Documentation is complete
-
-=== Test Summary ===
+Expected output when all tests pass:
+```
 Test Suites Passed: 3/3
 Test Suites Failed: 0/3
 ✓ All test suites passed!
