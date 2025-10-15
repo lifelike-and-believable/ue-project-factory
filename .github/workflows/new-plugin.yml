@@ -140,6 +140,10 @@ jobs:
           
           echo "Renaming plugin from SamplePlugin to $PLUGIN_NAME for UE $UE_VERSION"
           
+          # This rename logic is also available as a standalone script: 
+          # /workspaces/ue-project-factory/scripts/rename_plugin.sh
+          # The inline version below uses git grep for efficiency in CI
+          
           # Rename plugin directories and files
           # Check if the expected template structure exists
           if [ ! -d "Plugins/SamplePlugin" ]; then

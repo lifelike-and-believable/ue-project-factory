@@ -8,12 +8,22 @@ ue_version = ue_version_input if ue_version_input else '5.6'  # Default version
 
 def to_pascal_case(text):
     """Convert text to PascalCase alphanumeric"""
+    # If already in valid PascalCase format, return as-is
+    if re.match(r'^[A-Z][A-Za-z0-9]*$', text):
+        return text
+    
     # Replace hyphens and underscores with spaces to treat them as word separators
     text = text.replace('-', ' ').replace('_', ' ')
+    
+    # Split on camelCase/PascalCase boundaries (insert space before uppercase letters)
+    text = re.sub(r'([a-z])([A-Z])', r'\1 \2', text)
+    
     # Remove all non-alphanumeric characters except spaces
     cleaned = re.sub(r'[^a-zA-Z0-9\s]', '', text)
+    
     # Split on whitespace and capitalize each word
     words = cleaned.split()
+    
     # Join and capitalize first letter of each word
     pascal = ''.join(word.capitalize() for word in words if word)
     return pascal
