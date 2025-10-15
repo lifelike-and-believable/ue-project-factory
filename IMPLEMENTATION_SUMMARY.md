@@ -27,23 +27,24 @@ The automation for plugin name replacement is **fully implemented and tested**. 
 - Clones the newly created repository
 - Configures git for automated commits
 
-**Lines 135-186**: Plugin Renaming Logic
-- Replaces all content references (SamplePlugin → PluginName)
-- Renames plugin folder structure
-- Renames module source files (.cpp, .h, .Build.cs)
-- Renames source directories
-- Updates .uplugin file
-- Updates UE version in project file
+**Lines 135-209**: Plugin Renaming Logic (step "Rename plugin files and folders")
+- Replaces all content references (SamplePlugin → PluginName) using safe filename handling (git grep -lz | xargs -0 -r)
+- Renames plugin folder structure with existence checks
+- Renames module source files (.cpp, .h, .Build.cs) with defensive checks
+- Renames source directories only if they exist (handles minimal templates)
+- Updates .uplugin file if present
+- Updates UE version in project file if present
+- Provides informative logging for each operation
 
-**Lines 188-210**: Commit and Push
+**Lines 212-232**: Commit and Push
 - Commits all rename changes
 - Pushes to main branch
 
-**Lines 212-233**: Branch Protection
+**Lines 234-255**: Branch Protection
 - Applies protection rules to main
 - Requires status checks for PRs
 
-**Lines 235-297**: Issue Creation
+**Lines 257-319**: Issue Creation
 - Creates structured issue for Copilot Agent
 - Assigns to @copilot
 - Includes requirements and technical context
@@ -185,8 +186,13 @@ bash scripts/test_integration.sh
 2. **Rename Logic**: Integrated into workflow (lines 135-186)
 3. **Parser Tests**: Added comprehensive test cases (18 tests)
 4. **Rename Tests**: Added validation script
-5. **Integration Tests**: Added end-to-end validation (NEW)
-6. **Test Runner**: Added unified test execution (NEW)
+5. **Integration Tests**: Added end-to-end validation
+6. **Test Runner**: Added unified test execution
+7. **Robustness Improvements**: Added defensive checks and safer file handling (2025-10-15)
+   - Added existence checks before all mv operations
+   - Improved git grep with -z and xargs -0 for safer filename handling
+   - Added informative logging for each rename operation
+   - Enhanced resilience for templates with optional directories
 
 ## Conclusion
 
@@ -197,5 +203,7 @@ The automated plugin name replacement is **fully implemented, tested, and produc
 - ✅ UE version management
 - ✅ Error handling and validation
 - ✅ Comprehensive test coverage
+- ✅ Graceful handling of minimal template structures
+- ✅ Safe handling of filenames with special characters
 
 No additional implementation work is required. The feature is complete and ready for use.
