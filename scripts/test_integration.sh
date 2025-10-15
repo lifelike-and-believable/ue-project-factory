@@ -98,13 +98,15 @@ PLUGIN_NAME="IntegrationTest"
 UE_VERSION="5.4"
 
 echo -n "  Testing file content replacement... "
-if git grep -l "SamplePlugin" > /dev/null; then
-  git grep -l "SamplePlugin" | xargs sed -i "s/SamplePlugin/$PLUGIN_NAME/g"
-fi
-if git grep -q "IntegrationTest" > /dev/null; then
-  echo "✓"
+if git grep -lz "SamplePlugin" 2>/dev/null | xargs -0 -r sed -i "s/SamplePlugin/$PLUGIN_NAME/g"; then
+  if git grep -q "IntegrationTest" > /dev/null; then
+    echo "✓"
+  else
+    echo "✗ FAILED - content not replaced"
+    exit 1
+  fi
 else
-  echo "✗ FAILED - content not replaced"
+  echo "✗ FAILED - git grep failed"
   exit 1
 fi
 
