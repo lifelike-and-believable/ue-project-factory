@@ -168,7 +168,7 @@ fi
 # Note: Individual .cpp/.h files are not renamed, only their content is updated.
 # This is normal - UE plugins can have files with various names.
 if grep -q "TestPlugin" "Plugins/$PLUGIN_NAME/Source/$PLUGIN_NAME/SamplePlugin.cpp"; then
-  echo "✓ Source file content updated (file name unchanged, which is expected)"
+  echo "✓ Source file content updated (file name unchanged, which is expected for UE plugin source files)"
 else
   echo "✗ Source file content NOT updated"
   exit 1
