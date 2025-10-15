@@ -5,11 +5,14 @@ set -euo pipefail
 echo "=== Workflow Simulation Test ==="
 echo ""
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
 TEST_DIR=$(mktemp -d)
 cd "$TEST_DIR"
 
 # Copy parser to test directory
-cp /home/runner/work/ue-project-factory/ue-project-factory/scripts/parser.py .
+cp "$PROJECT_ROOT/scripts/parser.py" .
 
 echo "Test 1: Inline requirements with quotes"
 echo "----------------------------------------"
@@ -40,13 +43,14 @@ echo ""
 
 echo "Test 2: Multiline requirements with special characters"
 echo "-------------------------------------------------------"
-REQ='# Audio & Video Plugin
+cat > requirements.txt << 'EOF'
+# Audio & Video Plugin
 Create a plugin for UE 5.4
 Features:
 - Audio processing with "DSP"
 - Video encoding/decoding
-- Real-time effects'
-printf '%s' "$REQ" > requirements.txt
+- Real-time effects
+EOF
 echo "✓ Requirements written to requirements.txt"
 
 export REQUIREMENTS_FILE=requirements.txt
