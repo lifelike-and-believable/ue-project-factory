@@ -5,3 +5,8 @@ __pycache__/
 
 # Testing artifacts
 spec.json
+issue_body.md
+issue_body_final.md
+
+# Temporary clones
+new-repo/

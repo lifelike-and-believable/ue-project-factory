@@ -60,8 +60,12 @@ if not name:
     m = re.search(r'plugin\s+called\s+([A-Za-z0-9_-]+)', req, re.I)
     if m: 
         candidate = m.group(1)
-        # Clean up the extracted name (remove hyphens, underscores)
-        name = to_pascal_case(candidate)
+        # If already valid PascalCase, keep it; otherwise convert
+        if re.match(r'^[A-Z][A-Za-z0-9]*$', candidate):
+            name = candidate
+        else:
+            # Clean up the extracted name (remove hyphens, underscores)
+            name = to_pascal_case(candidate)
     else:
         # Derive from requirements
         name = derive_plugin_name(req)
