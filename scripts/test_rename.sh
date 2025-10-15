@@ -145,7 +145,7 @@ for module_dir in "Plugins/$PLUGIN_NAME/Source/SamplePlugin" "Plugins/$PLUGIN_NA
     # Rename .cpp, .h, and .Build.cs files that match the module name
     for ext in cpp h Build.cs; do
       if [ -f "$module_dir/$module_basename.$ext" ]; then
-        new_module_name=$(echo "$module_basename" | sed "s/SamplePlugin/$PLUGIN_NAME/g")
+        new_module_name=$(echo "$module_basename" | sed "s/SamplePlugin/$PLUGIN_NAME_ESCAPED/g")
         mv "$module_dir/$module_basename.$ext" "$module_dir/$new_module_name.$ext"
         echo "✓ Renamed $module_basename.$ext to $new_module_name.$ext"
       fi
@@ -177,7 +177,9 @@ fi
 
 # Update UE version in project file (only if it exists)
 if [ -f "ProjectSandbox/ProjectSandbox.uproject" ]; then
-  sed -i "s/\"EngineAssociation\": \"5.6\"/\"EngineAssociation\": \"$UE_VERSION\"/g" ProjectSandbox/ProjectSandbox.uproject
+  # Escape UE_VERSION for use in sed replacement string
+  UE_VERSION_ESCAPED=$(printf '%s\n' "$UE_VERSION" | sed 's/[&/\]/\\&/g')
+  sed -i "s/\"EngineAssociation\": \"5.6\"/\"EngineAssociation\": \"$UE_VERSION_ESCAPED\"/g" ProjectSandbox/ProjectSandbox.uproject
   echo "✓ Updated UE version in project file"
 fi
 

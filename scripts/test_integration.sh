@@ -146,7 +146,9 @@ else
 fi
 
 echo -n "  Testing UE version update... "
-sed -i "s/\"EngineAssociation\": \"5.6\"/\"EngineAssociation\": \"$UE_VERSION\"/g" ProjectSandbox/ProjectSandbox.uproject
+# Escape UE_VERSION for use in sed replacement string
+UE_VERSION_ESCAPED=$(printf '%s\n' "$UE_VERSION" | sed 's/[&/\]/\\&/g')
+sed -i "s/\"EngineAssociation\": \"5.6\"/\"EngineAssociation\": \"$UE_VERSION_ESCAPED\"/g" ProjectSandbox/ProjectSandbox.uproject
 if grep -q "\"EngineAssociation\": \"5.4\"" ProjectSandbox/ProjectSandbox.uproject; then
   echo "✓"
 else
