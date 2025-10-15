@@ -97,7 +97,9 @@ fi
 
 # Replace all occurrences of SamplePlugin with the new plugin name in files first
 # (before renaming, so git grep can find tracked files)
-git grep -l "SamplePlugin" | xargs sed -i "s/SamplePlugin/$PLUGIN_NAME/g"
+if git grep -l "SamplePlugin" > /dev/null; then
+  git grep -l "SamplePlugin" | xargs sed -i "s/SamplePlugin/$PLUGIN_NAME/g"
+fi
 
 # Rename plugin folder
 mv Plugins/SamplePlugin "Plugins/$PLUGIN_NAME"
@@ -163,8 +165,10 @@ else
   exit 1
 fi
 
+# Note: Individual .cpp/.h files are not renamed, only their content is updated.
+# This is normal - UE plugins can have files with various names.
 if grep -q "TestPlugin" "Plugins/$PLUGIN_NAME/Source/$PLUGIN_NAME/SamplePlugin.cpp"; then
-  echo "✓ Source file content updated"
+  echo "✓ Source file content updated (file name unchanged, which is expected)"
 else
   echo "✗ Source file content NOT updated"
   exit 1

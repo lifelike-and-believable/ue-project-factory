@@ -150,7 +150,9 @@ jobs:
           
           # Replace all occurrences of SamplePlugin with the new plugin name in files first
           # (before renaming, so git grep can find tracked files)
-          git grep -l "SamplePlugin" | xargs sed -i "s/SamplePlugin/$PLUGIN_NAME/g"
+          if git grep -l "SamplePlugin" > /dev/null; then
+            git grep -l "SamplePlugin" | xargs sed -i "s/SamplePlugin/$PLUGIN_NAME/g"
+          fi
           
           # Rename plugin folder
           mv Plugins/SamplePlugin "Plugins/$PLUGIN_NAME"
