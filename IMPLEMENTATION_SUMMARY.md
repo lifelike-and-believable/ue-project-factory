@@ -27,11 +27,11 @@ The automation for plugin name replacement is **fully implemented and tested**. 
 - Clones the newly created repository
 - Configures git for automated commits
 
-**Lines 135-210**: Plugin Renaming Logic
-- Replaces all content references (SamplePlugin → PluginName) using safe filename handling
+**Lines 135-209**: Plugin Renaming Logic (step "Rename plugin files and folders")
+- Replaces all content references (SamplePlugin → PluginName) using safe filename handling (git grep -lz | xargs -0 -r)
 - Renames plugin folder structure with existence checks
 - Renames module source files (.cpp, .h, .Build.cs) with defensive checks
-- Renames source directories only if they exist
+- Renames source directories only if they exist (handles minimal templates)
 - Updates .uplugin file if present
 - Updates UE version in project file if present
 - Provides informative logging for each operation
