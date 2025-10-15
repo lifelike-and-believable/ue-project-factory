@@ -45,7 +45,7 @@ jobs:
           if ! command -v gh >/dev/null; then
             type -p curl >/dev/null && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
             sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
-            echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/gi[...]
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list
             sudo apt update && sudo apt install gh -y
           fi
       - name: Authenticate gh
@@ -311,7 +311,6 @@ jobs:
           UE_VERSION="${{ steps.parse.outputs.ue_version }}"
           REQUIREMENTS="${{ steps.load_req.outputs.requirements }}"
           
-          # Construct the problem statement for Copilot Agent using envsubst for safe variable substitution
           export PLUGIN UE_VERSION REQUIREMENTS
           
           cat > issue_body.md << 'EOF'
@@ -327,18 +326,28 @@ jobs:
           - Template Structure: This repo was created from ue-plugin-template
           - **The plugin has already been renamed** from SamplePlugin to ${PLUGIN}
           
+          ## Workflow Guidance for Copilot Agent
+          - Please create a feature branch and open a draft PR to main early. Iterate by pushing commits to that PR.
+          - On every push, the workflow "Agent CI (Inner Loop)" runs on a self-hosted Windows runner with UE ${UE_VERSION}.
+            - Job names (check contexts): "Build (Win64)" and "Automation Tests (Win64)".
+          - Wait for PR checks to complete:
+            - Use GitHub MCP: pull_request_read with method get_status for the PR’s head commit.
+          - If checks fail:
+            - Retrieve logs using GitHub MCP:
+              1) list_workflow_runs for this repository/workflow
+              2) list_workflow_jobs for the failing run
+              3) get_job_logs with failed_only=true (or a specific job_id)
+            - Use the logs to diagnose, then push a fix and repeat.
+          
           ## Tasks
           1. Implement the plugin functionality based on the requirements above
-          
           2. Ensure all tests in `Source/${PLUGIN}Tests/` are updated and pass
-          
           3. Update README.md with plugin-specific documentation
-          
           4. Add any additional files, classes, or modules needed for the plugin functionality
           
           ## Build & Test
-          The repo has a `pr-ci.yml` workflow that will automatically:
-          - Build the plugin using UAT
+          The repo has CI workflows that:
+          - Build the plugin using UAT on a self-hosted Windows runner
           - Run automation tests
           - Upload artifacts
           
@@ -352,11 +361,9 @@ jobs:
           - [ ] PR created and ready for review
           EOF
           
-          # Use envsubst for safe variable substitution
           envsubst < issue_body.md > issue_body_final.md
           mv issue_body_final.md issue_body.md
           
-          # Create the issue and assign to @copilot
           echo "Creating issue in ${{ inputs.org }}/${{ env.REPO_NAME }}"
           ISSUE_URL=$(gh issue create \
             --repo "${{ inputs.org }}/${{ env.REPO_NAME }}" \
