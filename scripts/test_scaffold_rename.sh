@@ -360,6 +360,6 @@ echo ""
 echo "✓ All rename operations completed successfully!"
 
 # Cleanup
-cd /
+cd "$HOME"
 rm -rf "$TEST_DIR"
 echo "✓ Test directory cleaned up"
