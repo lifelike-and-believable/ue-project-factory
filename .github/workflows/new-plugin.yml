@@ -20,7 +20,10 @@ name: New UE Plugin Project
       requirements_file:
         description: 'Path to requirements file in factory repo (e.g., specs/my-plugin.md) - takes precedence over requirements field'
       plugin_name:
-        description: 'Optional plugin name (if blank, Copilot will choose)'
+        description: 'Optional plugin name (if blank, will be derived from requirements)'
+        required: false
+      ue_version:
+        description: 'Optional UE version (e.g., 5.5, 5.6). Defaults to 5.6'
         required: false
       requirements:
         description: 'Freeform requirements prompt (used if requirements_file is not provided)'
@@ -32,6 +35,8 @@ jobs:
       contents: write
       issues: write
       pull-requests: write
+      actions: write
+      administration: write
     steps:
       - uses: actions/checkout@v4
       - name: Install deps
@@ -75,10 +80,15 @@ jobs:
         env:
           REQ: ${{ steps.load_req.outputs.requirements }}
           PLUGIN_NAME: ${{ inputs.plugin_name }}
+          UE_VERSION: ${{ inputs.ue_version }}
         run: |
           python3 scripts/parser.py > spec.json
-          echo "plugin_name=$(jq -r .plugin_name spec.json)" >> $GITHUB_OUTPUT
-          echo "ue_version=$(jq -r .ue_version spec.json)" >> $GITHUB_OUTPUT
+          PLUGIN_NAME=$(jq -r .plugin_name spec.json)
+          UE_VERSION=$(jq -r .ue_version spec.json)
+          echo "plugin_name=$PLUGIN_NAME" >> $GITHUB_OUTPUT
+          echo "ue_version=$UE_VERSION" >> $GITHUB_OUTPUT
+          echo "✓ Resolved plugin name: $PLUGIN_NAME"
+          echo "✓ Resolved UE version: $UE_VERSION"
           
       - name: Create repository from template
         env:
@@ -107,10 +117,99 @@ jobs:
           
           # Add the secret to the newly created repo using gh CLI
           echo "${{ secrets.FACTORY_ADMIN_TOKEN }}" | gh secret set FACTORY_ADMIN_TOKEN \
-            --repo "${{ inputs.org }}/$REPO_NAME" \
+            --repo "${{ inputs.org }}/${{ env.REPO_NAME }}" \
             --body -
           
-          echo "✓ Secret added successfully to ${{ inputs.org }}/$REPO_NAME"
+          echo "✓ Secret added successfully to ${{ inputs.org }}/${{ env.REPO_NAME }}"
+      
+      - name: Clone new repository
+        env:
+          GH_TOKEN: ${{ secrets.FACTORY_ADMIN_TOKEN }}
+        run: |
+          echo "Cloning ${{ inputs.org }}/${{ env.REPO_NAME }}..."
+          git clone "https://x-access-token:${{ secrets.FACTORY_ADMIN_TOKEN }}@github.com/${{ inputs.org }}/${{ env.REPO_NAME }}.git" new-repo
+          cd new-repo
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          echo "✓ Repository cloned successfully"
+      
+      - name: Setup PowerShell Core
+        run: |
+          # Ubuntu runners should have pwsh pre-installed
+          pwsh --version || {
+            echo "Installing PowerShell Core..."
+            wget -q https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/packages-microsoft-prod.deb
+            sudo dpkg -i packages-microsoft-prod.deb
+            sudo apt-get update
+            sudo apt-get install -y powershell
+          }
+          echo "✓ PowerShell Core is available"
+      
+      - name: Run plugin rename script
+        run: |
+          cd new-repo
+          PLUGIN_NAME="${{ steps.parse.outputs.plugin_name }}"
+          UE_VERSION="${{ steps.parse.outputs.ue_version }}"
+          
+          echo "Running rename script with plugin name: $PLUGIN_NAME and UE version: $UE_VERSION"
+          
+          # Check if the rename script exists
+          if [ ! -f "Build/Scripts/Rename-Plugin.ps1" ]; then
+            echo "Warning: Rename-Plugin.ps1 not found in template. Skipping rename."
+            echo "RENAME_SKIPPED=true" >> $GITHUB_ENV
+          else
+            # Run the rename script
+            pwsh -Command "& ./Build/Scripts/Rename-Plugin.ps1 -NewPluginName '$PLUGIN_NAME' -UEVersion '$UE_VERSION' -RepoRoot '$PWD'"
+            echo "✓ Rename script completed"
+            echo "RENAME_SKIPPED=false" >> $GITHUB_ENV
+          fi
+      
+      - name: Commit and push rename changes
+        env:
+          GH_TOKEN: ${{ secrets.FACTORY_ADMIN_TOKEN }}
+        run: |
+          cd new-repo
+          
+          # Check if there are any changes
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "No changes to commit (rename may have been idempotent or skipped)"
+            echo "RENAME_COMMIT_SHA=$(git rev-parse HEAD)" >> $GITHUB_ENV
+          else
+            PLUGIN_NAME="${{ steps.parse.outputs.plugin_name }}"
+            UE_VERSION="${{ steps.parse.outputs.ue_version }}"
+            
+            git add -A
+            git commit -m "Rename plugin to $PLUGIN_NAME for UE $UE_VERSION"
+            git push origin main
+            
+            COMMIT_SHA=$(git rev-parse HEAD)
+            echo "RENAME_COMMIT_SHA=$COMMIT_SHA" >> $GITHUB_ENV
+            echo "✓ Changes committed and pushed to main"
+            echo "✓ Commit SHA: $COMMIT_SHA"
+          fi
+      
+      - name: Apply branch protection
+        env:
+          GH_TOKEN: ${{ secrets.FACTORY_ADMIN_TOKEN }}
+        run: |
+          echo "Applying branch protection to main branch..."
+          
+          # Apply branch protection rules via GitHub API
+          gh api \
+            --method PUT \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${{ inputs.org }}/${{ env.REPO_NAME }}/branches/main/protection" \
+            -f "required_status_checks[strict]=true" \
+            -f "required_status_checks[contexts][]=Build (Win64)" \
+            -f "required_status_checks[contexts][]=Automation Tests (Win64)" \
+            -f "enforce_admins=true" \
+            -f "required_pull_request_reviews=null" \
+            -f "restrictions=null" \
+            -f "allow_force_pushes=false" \
+            -f "allow_deletions=false" \
+            -f "required_linear_history=false" || echo "Warning: Branch protection setup failed. May need to be configured manually."
+          
+          echo "✓ Branch protection applied"
           
       - name: Create issue and assign to Copilot Agent
         env:
@@ -123,68 +222,27 @@ jobs:
           # Construct the problem statement for Copilot Agent using envsubst for safe variable substitution
           export PLUGIN UE_VERSION REQUIREMENTS
           
-          if [ "$PLUGIN" = "TBD" ]; then
-            cat > issue_body.md << 'EOF'
-          # Implement Unreal Engine Plugin
-          
-          ## Requirements
-          ${REQUIREMENTS}
-          
-          ## Technical Context
-          - Unreal Engine Version: ${UE_VERSION}
-          - Target Platforms: Win64
-          - Template Structure: This repo was created from ue-plugin-template
-          
-          ## Tasks
-          0. **Choose an appropriate plugin name** based on the requirements above. The name should:
-             - Follow Unreal Engine naming conventions (PascalCase, no spaces)
-             - Be descriptive of the plugin's purpose
-             - Not conflict with common UE plugin names
-          
-          1. **Run the rename script** with your chosen name:
-             ```
-             pwsh Build/Scripts/Rename-Plugin.ps1 -NewPluginName "YourChosenName" -UEVersion "${UE_VERSION}"
-             ```
-             This script will handle all the mechanical renaming of directories, files, and code references.
-          
-          2. Implement the plugin functionality based on the requirements above
-          
-          3. Ensure all tests in `Source/<YourPluginName>Tests/` are updated and pass
-          
-          4. Update README.md with plugin-specific documentation
-          
-          ## Build & Test
-          The repo has a `pr-ci.yml` workflow that will automatically:
-          - Build the plugin using UAT
-          - Run automation tests
-          - Upload artifacts
-          
-          Please ensure your implementation will build and pass tests on Windows with UE ${UE_VERSION} installed at `C:\Program Files\Epic Games\UE_${UE_VERSION}`.
-          EOF
-          else
-            cat > issue_body.md << 'EOF'
+          cat > issue_body.md << 'EOF'
           # Implement Unreal Engine Plugin: ${PLUGIN}
           
           ## Requirements
           ${REQUIREMENTS}
           
           ## Technical Context
+          - Plugin Name: ${PLUGIN}
           - Unreal Engine Version: ${UE_VERSION}
           - Target Platforms: Win64
           - Template Structure: This repo was created from ue-plugin-template
+          - **The plugin has already been renamed** from SamplePlugin to ${PLUGIN}
           
           ## Tasks
-          1. **Run the rename script first:**
-             ```
-             pwsh Build/Scripts/Rename-Plugin.ps1 -NewPluginName "${PLUGIN}" -UEVersion "${UE_VERSION}"
-             ```
-             This script will handle all the mechanical renaming of directories, files, and code references from `SamplePlugin` to `${PLUGIN}`.
+          1. Implement the plugin functionality based on the requirements above
           
-          2. Implement the plugin functionality based on the requirements above
+          2. Ensure all tests in `Source/${PLUGIN}Tests/` are updated and pass
           
-          3. Ensure all tests in `Source/${PLUGIN}Tests/` are updated and pass
+          3. Update README.md with plugin-specific documentation
           
-          4. Update README.md with plugin-specific documentation
+          4. Add any additional files, classes, or modules needed for the plugin functionality
           
           ## Build & Test
           The repo has a `pr-ci.yml` workflow that will automatically:
@@ -193,17 +251,57 @@ jobs:
           - Upload artifacts
           
           Please ensure your implementation will build and pass tests on Windows with UE ${UE_VERSION} installed at `C:\Program Files\Epic Games\UE_${UE_VERSION}`.
+          
+          ## Definition of Done
+          - [ ] Plugin functionality implemented according to requirements
+          - [ ] All tests pass (Build and Automation Tests)
+          - [ ] README.md updated with plugin documentation
+          - [ ] Code follows Unreal Engine coding standards
+          - [ ] PR created and ready for review
           EOF
-          fi
           
           # Use envsubst for safe variable substitution
           envsubst < issue_body.md > issue_body_final.md
           mv issue_body_final.md issue_body.md
           
           # Create the issue and assign to @copilot
-          echo "Creating issue in ${{ inputs.org }}/$REPO_NAME"
-          gh issue create \
-            --repo "${{ inputs.org }}/$REPO_NAME" \
-            --title "Initialize $PLUGIN plugin" \
+          echo "Creating issue in ${{ inputs.org }}/${{ env.REPO_NAME }}"
+          ISSUE_URL=$(gh issue create \
+            --repo "${{ inputs.org }}/${{ env.REPO_NAME }}" \
+            --title "Implement $PLUGIN plugin" \
             --body-file issue_body.md \
-            --assignee @copilot
+            --assignee @copilot)
+          
+          echo "ISSUE_URL=$ISSUE_URL" >> $GITHUB_ENV
+          echo "✓ Issue created: $ISSUE_URL"
+      
+      - name: Generate job summary
+        run: |
+          PLUGIN="${{ steps.parse.outputs.plugin_name }}"
+          UE_VERSION="${{ steps.parse.outputs.ue_version }}"
+          REPO_URL="https://github.com/${{ inputs.org }}/${{ env.REPO_NAME }}"
+          
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## ✓ Plugin Factory Complete
+          
+          **Plugin Name:** $PLUGIN  
+          **UE Version:** $UE_VERSION  
+          **Repository:** [${{ inputs.org }}/${{ env.REPO_NAME }}]($REPO_URL)
+          
+          ### Actions Taken
+          - ✓ Created repository from template
+          - ✓ Renamed plugin from SamplePlugin to $PLUGIN
+          - ✓ Committed rename changes ([commit ${{ env.RENAME_COMMIT_SHA }}]($REPO_URL/commit/${{ env.RENAME_COMMIT_SHA }}))
+          - ✓ Applied branch protection to main
+          - ✓ Created implementation issue for Copilot Agent
+          
+          ### Next Steps
+          The GitHub Copilot Coding Agent has been assigned to implement the plugin functionality. Monitor the [issue](${{ env.ISSUE_URL }}) for progress.
+          
+          ### Links
+          - [Repository]($REPO_URL)
+          - [Issue](${{ env.ISSUE_URL }})
+          - [Rename Commit]($REPO_URL/commit/${{ env.RENAME_COMMIT_SHA }})
+          EOF
+          
+          echo "✓ Job summary generated"
