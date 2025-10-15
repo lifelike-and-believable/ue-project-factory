@@ -53,14 +53,16 @@ The automation for plugin name replacement is **fully implemented and tested**. 
 **Purpose**: Extracts plugin name and UE version from various input sources
 
 **Features**:
-- Accepts explicit `PLUGIN_NAME` environment variable
+- Accepts explicit `PLUGIN_NAME` environment variable (highest priority)
 - Extracts from "plugin called X" pattern in requirements
-- Auto-derives from requirements text (titles, patterns)
+- Auto-derives from requirements using patterns:
+  - "create a {name} plugin" / "build a {name} plugin" / "implement a {name} plugin"
+  - First line/title if no pattern matches
 - Converts to PascalCase alphanumeric format
 - Validates against UE naming conventions (`^[A-Z][A-Za-z0-9]*$`)
-- Falls back to "NewPlugin" if derivation fails
+- Fallback hierarchy: explicit input → pattern extraction → first line derivation → "NewPlugin" default
 - Extracts UE version from requirements or uses explicit input
-- Defaults to UE 5.6
+- Defaults to UE 5.6 if no version specified
 
 **Functions**:
 - `to_pascal_case(text)`: Converts text to PascalCase
@@ -73,8 +75,8 @@ The automation for plugin name replacement is **fully implemented and tested**. 
   - Explicit plugin name input
   - Pattern extraction ("plugin called X")
   - Auto-derivation from markdown headings
-  - Auto-derivation from requirement text patterns (create/build/implement)
-  - Fallback behavior (first line as title, default to "NewPlugin")
+  - Auto-derivation using patterns: "create a {name} plugin", "build an {name} plugin", "implement a {name} plugin"
+  - Multi-level fallback: pattern match → first line as title → "NewPlugin" default
   - UE version extraction and defaults
 
 #### Rename Tests (`scripts/test_rename.sh`)
