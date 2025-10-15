@@ -126,11 +126,50 @@ jobs:
           GH_TOKEN: ${{ secrets.FACTORY_ADMIN_TOKEN }}
         run: |
           echo "Cloning ${{ inputs.org }}/${{ env.REPO_NAME }}..."
-          git clone "https://x-access-token:${{ secrets.FACTORY_ADMIN_TOKEN }}@github.com/${{ inputs.org }}/${{ env.REPO_NAME }}.git" new-repo
-          cd new-repo
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          echo "✓ Repository cloned successfully"
+          
+          # Wait for template repository to be fully populated
+          # GitHub's template creation is asynchronous, so we need to retry until the expected structure exists
+          MAX_ATTEMPTS=30
+          ATTEMPT=1
+          
+          while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+            echo "Attempt $ATTEMPT/$MAX_ATTEMPTS: Cloning repository..."
+            
+            # Clean up any previous failed clone attempt
+            if [ -d "new-repo" ]; then
+              rm -rf new-repo
+            fi
+            
+            # Clone the repository
+            if git clone "https://x-access-token:${{ secrets.FACTORY_ADMIN_TOKEN }}@github.com/${{ inputs.org }}/${{ env.REPO_NAME }}.git" new-repo; then
+              cd new-repo
+              
+              # Check if the expected template structure exists
+              if [ -d "Plugins/SamplePlugin" ]; then
+                echo "✓ Repository cloned successfully with expected template structure"
+                git config user.name "github-actions[bot]"
+                git config user.email "github-actions[bot]@users.noreply.github.com"
+                cd ..
+                break
+              else
+                echo "Repository cloned but template structure not yet available. Waiting..."
+                cd ..
+                rm -rf new-repo
+              fi
+            else
+              echo "Failed to clone repository. Waiting..."
+            fi
+            
+            if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
+              echo "Error: Failed to clone repository with expected structure after $MAX_ATTEMPTS attempts"
+              echo "This may indicate an issue with the template repository or GitHub's template copying process"
+              exit 1
+            fi
+            
+            echo "Waiting 10 seconds before retry..."
+            sleep 10
+            ATTEMPT=$((ATTEMPT + 1))
+          done
       
       - name: Rename plugin files and folders
         run: |
@@ -140,11 +179,21 @@ jobs:
           
           echo "Renaming plugin from SamplePlugin to $PLUGIN_NAME for UE $UE_VERSION"
           
+          # Diagnostic: Show current directory structure
+          echo "Current repository structure:"
+          find . -type d -name "Plugins*" -o -name "SamplePlugin*" | head -20 || echo "No matching directories found"
+          
           # Rename plugin directories and files
           # Check if the expected template structure exists
           if [ ! -d "Plugins/SamplePlugin" ]; then
             echo "Error: Expected template structure not found (Plugins/SamplePlugin missing)"
             echo "Template may not be compatible with this factory workflow"
+            echo "Available directories in repository root:"
+            ls -la
+            if [ -d "Plugins" ]; then
+              echo "Contents of Plugins directory:"
+              ls -la Plugins/
+            fi
             exit 1
           fi
           
