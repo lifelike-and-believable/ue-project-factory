@@ -60,6 +60,32 @@ void FSamplePluginModule::ShutdownModule()
 IMPLEMENT_MODULE(FSamplePluginModule, SamplePlugin)
 EOF
 
+cat > "$TEST_DIR/Plugins/SamplePlugin/Source/SamplePlugin/SamplePlugin.h" << 'EOF'
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Modules/ModuleManager.h"
+
+class FSamplePluginModule : public IModuleInterface
+{
+public:
+    virtual void StartupModule() override;
+    virtual void ShutdownModule() override;
+};
+EOF
+
+cat > "$TEST_DIR/Plugins/SamplePlugin/Source/SamplePlugin/SamplePlugin.Build.cs" << 'EOF'
+using UnrealBuildTool;
+
+public class SamplePlugin : ModuleRules
+{
+    public SamplePlugin(ReadOnlyTargetRules Target) : base(Target)
+    {
+        PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
+    }
+}
+EOF
+
 cat > "$TEST_DIR/ProjectSandbox/ProjectSandbox.uproject" << 'EOF'
 {
   "FileVersion": 3,
@@ -103,6 +129,21 @@ fi
 
 # Rename plugin folder
 mv Plugins/SamplePlugin "Plugins/$PLUGIN_NAME"
+
+# Rename module source files in each directory before renaming the directories
+# This ensures files like SamplePlugin.cpp become PluginName.cpp
+for module_dir in "Plugins/$PLUGIN_NAME/Source/SamplePlugin" "Plugins/$PLUGIN_NAME/Source/SamplePluginEditor" "Plugins/$PLUGIN_NAME/Source/SamplePluginTests"; do
+  if [ -d "$module_dir" ]; then
+    module_basename=$(basename "$module_dir")
+    # Rename .cpp, .h, and .Build.cs files that match the module name
+    for ext in cpp h Build.cs; do
+      if [ -f "$module_dir/$module_basename.$ext" ]; then
+        new_module_name=$(echo "$module_basename" | sed "s/SamplePlugin/$PLUGIN_NAME/g")
+        mv "$module_dir/$module_basename.$ext" "$module_dir/$new_module_name.$ext"
+      fi
+    done
+  fi
+done
 
 # Rename source folders
 mv "Plugins/$PLUGIN_NAME/Source/SamplePlugin" "Plugins/$PLUGIN_NAME/Source/$PLUGIN_NAME"
@@ -165,12 +206,43 @@ else
   exit 1
 fi
 
-# Note: Individual .cpp/.h files are not renamed, only their content is updated.
-# This is normal - UE plugins can have files with various names.
-if grep -q "TestPlugin" "Plugins/$PLUGIN_NAME/Source/$PLUGIN_NAME/SamplePlugin.cpp"; then
-  echo "✓ Source file content updated (file name unchanged, which is expected for UE plugin source files)"
+# Check that module source files were renamed
+if [ -f "Plugins/$PLUGIN_NAME/Source/$PLUGIN_NAME/$PLUGIN_NAME.cpp" ]; then
+  echo "✓ Module source file renamed: $PLUGIN_NAME.cpp"
 else
-  echo "✗ Source file content NOT updated"
+  echo "✗ Module source file NOT renamed: $PLUGIN_NAME.cpp"
+  exit 1
+fi
+
+# Verify the content was also updated
+if grep -q "TestPlugin" "Plugins/$PLUGIN_NAME/Source/$PLUGIN_NAME/$PLUGIN_NAME.cpp"; then
+  echo "✓ Module source file content updated"
+else
+  echo "✗ Module source file content NOT updated"
+  exit 1
+fi
+
+# Verify old file name doesn't exist
+if [ -f "Plugins/$PLUGIN_NAME/Source/$PLUGIN_NAME/SamplePlugin.cpp" ]; then
+  echo "✗ Old source file still exists: SamplePlugin.cpp"
+  exit 1
+else
+  echo "✓ Old source file removed"
+fi
+
+# Check that .h file was renamed
+if [ -f "Plugins/$PLUGIN_NAME/Source/$PLUGIN_NAME/$PLUGIN_NAME.h" ]; then
+  echo "✓ Module header file renamed: $PLUGIN_NAME.h"
+else
+  echo "✗ Module header file NOT renamed: $PLUGIN_NAME.h"
+  exit 1
+fi
+
+# Check that .Build.cs file was renamed
+if [ -f "Plugins/$PLUGIN_NAME/Source/$PLUGIN_NAME/$PLUGIN_NAME.Build.cs" ]; then
+  echo "✓ Module build file renamed: $PLUGIN_NAME.Build.cs"
+else
+  echo "✗ Module build file NOT renamed: $PLUGIN_NAME.Build.cs"
   exit 1
 fi
 

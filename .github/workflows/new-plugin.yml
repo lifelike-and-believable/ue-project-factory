@@ -157,6 +157,21 @@ jobs:
           # Rename plugin folder
           mv Plugins/SamplePlugin "Plugins/$PLUGIN_NAME"
           
+          # Rename module source files in each directory before renaming the directories
+          # This ensures files like SamplePlugin.cpp become PluginName.cpp
+          for module_dir in "Plugins/$PLUGIN_NAME/Source/SamplePlugin" "Plugins/$PLUGIN_NAME/Source/SamplePluginEditor" "Plugins/$PLUGIN_NAME/Source/SamplePluginTests"; do
+            if [ -d "$module_dir" ]; then
+              module_basename=$(basename "$module_dir")
+              # Rename .cpp, .h, and .Build.cs files that match the module name
+              for ext in cpp h Build.cs; do
+                if [ -f "$module_dir/$module_basename.$ext" ]; then
+                  new_module_name=$(echo "$module_basename" | sed "s/SamplePlugin/$PLUGIN_NAME/g")
+                  mv "$module_dir/$module_basename.$ext" "$module_dir/$new_module_name.$ext"
+                fi
+              done
+            fi
+          done
+          
           # Rename source folders
           mv "Plugins/$PLUGIN_NAME/Source/SamplePlugin" "Plugins/$PLUGIN_NAME/Source/$PLUGIN_NAME"
           mv "Plugins/$PLUGIN_NAME/Source/SamplePluginEditor" "Plugins/$PLUGIN_NAME/Source/${PLUGIN_NAME}Editor"
