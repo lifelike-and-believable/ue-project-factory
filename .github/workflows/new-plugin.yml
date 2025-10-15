@@ -211,17 +211,19 @@ jobs:
           echo "✓ Renamed plugin folder"
           
           # Rename module source files in each directory before renaming the directories
-          # This ensures files like SamplePlugin.cpp become PluginName.cpp
+          # This ensures files like SamplePlugin.cpp and SamplePluginSmokeTest.cpp become PluginName.cpp and PluginNameSmokeTest.cpp
           for module_dir in "Plugins/$PLUGIN_NAME/Source/SamplePlugin" "Plugins/$PLUGIN_NAME/Source/SamplePluginEditor" "Plugins/$PLUGIN_NAME/Source/SamplePluginTests"; do
             if [ -d "$module_dir" ]; then
-              module_basename=$(basename "$module_dir")
-              # Rename .cpp, .h, and .Build.cs files that match the module name
+              # Rename all .cpp, .h, and .Build.cs files that contain SamplePlugin in their name
               for ext in cpp h Build.cs; do
-                if [ -f "$module_dir/$module_basename.$ext" ]; then
-                  new_module_name=$(echo "$module_basename" | sed "s/SamplePlugin/$PLUGIN_NAME/g")
-                  mv "$module_dir/$module_basename.$ext" "$module_dir/$new_module_name.$ext"
-                  echo "✓ Renamed $module_basename.$ext to $new_module_name.$ext"
-                fi
+                for file in "$module_dir"/*SamplePlugin*."$ext"; do
+                  if [ -f "$file" ]; then
+                    filename=$(basename "$file")
+                    new_filename=$(echo "$filename" | sed "s/SamplePlugin/$PLUGIN_NAME/g")
+                    mv "$file" "$module_dir/$new_filename"
+                    echo "✓ Renamed $filename to $new_filename"
+                  fi
+                done
               done
             fi
           done
