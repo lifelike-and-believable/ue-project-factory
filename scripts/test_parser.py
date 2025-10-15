@@ -16,7 +16,7 @@ import sys
 
 def test_parser(test_name, env, expected):
     """Run parser test and check results"""
-    result = subprocess.run(['python3', 'scripts/parser.py'], 
+    result = subprocess.run([sys.executable, 'scripts/parser.py'], 
                            env=env,
                            capture_output=True, text=True)
     if result.returncode != 0:
