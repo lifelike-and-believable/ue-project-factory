@@ -70,14 +70,14 @@ jobs:
               echo "Using inline requirements"
             fi
           fi
-          # Use heredoc to safely handle multiline content
-          echo "requirements<<EOF" >> $GITHUB_OUTPUT
-          echo "$REQ" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          # Write requirements to file for downstream use
+          # Using printf to safely handle special characters and prevent command execution
+          printf '%s' "$REQ" > requirements.txt
+          echo "✓ Requirements written to requirements.txt"
       - name: Parse requirements
         id: parse
         env:
-          REQ: ${{ steps.load_req.outputs.requirements }}
+          REQUIREMENTS_FILE: requirements.txt
           PLUGIN_NAME: ${{ inputs.plugin_name }}
           UE_VERSION: ${{ inputs.ue_version }}
         run: |
@@ -311,7 +311,7 @@ jobs:
         run: |
           PLUGIN="${{ steps.parse.outputs.plugin_name }}"
           UE_VERSION="${{ steps.parse.outputs.ue_version }}"
-          REQUIREMENTS="${{ steps.load_req.outputs.requirements }}"
+          REQUIREMENTS=$(cat requirements.txt)
           
           export PLUGIN UE_VERSION REQUIREMENTS
           
