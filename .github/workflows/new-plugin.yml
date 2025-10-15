@@ -117,17 +117,17 @@ jobs:
           
           # Add the secret to the newly created repo using gh CLI
           echo "${{ secrets.FACTORY_ADMIN_TOKEN }}" | gh secret set FACTORY_ADMIN_TOKEN \
-            --repo "${{ inputs.org }}/$REPO_NAME" \
+            --repo "${{ inputs.org }}/${{ env.REPO_NAME }}" \
             --body -
           
-          echo "✓ Secret added successfully to ${{ inputs.org }}/$REPO_NAME"
+          echo "✓ Secret added successfully to ${{ inputs.org }}/${{ env.REPO_NAME }}"
       
       - name: Clone new repository
         env:
           GH_TOKEN: ${{ secrets.FACTORY_ADMIN_TOKEN }}
         run: |
-          echo "Cloning ${{ inputs.org }}/$REPO_NAME..."
-          git clone "https://x-access-token:${{ secrets.FACTORY_ADMIN_TOKEN }}@github.com/${{ inputs.org }}/$REPO_NAME.git" new-repo
+          echo "Cloning ${{ inputs.org }}/${{ env.REPO_NAME }}..."
+          git clone "https://x-access-token:${{ secrets.FACTORY_ADMIN_TOKEN }}@github.com/${{ inputs.org }}/${{ env.REPO_NAME }}.git" new-repo
           cd new-repo
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -198,7 +198,7 @@ jobs:
           gh api \
             --method PUT \
             -H "Accept: application/vnd.github+json" \
-            "/repos/${{ inputs.org }}/$REPO_NAME/branches/main/protection" \
+            "/repos/${{ inputs.org }}/${{ env.REPO_NAME }}/branches/main/protection" \
             -f "required_status_checks[strict]=true" \
             -f "required_status_checks[contexts][]=Build (Win64)" \
             -f "required_status_checks[contexts][]=Automation Tests (Win64)" \
@@ -265,9 +265,9 @@ jobs:
           mv issue_body_final.md issue_body.md
           
           # Create the issue and assign to @copilot
-          echo "Creating issue in ${{ inputs.org }}/$REPO_NAME"
+          echo "Creating issue in ${{ inputs.org }}/${{ env.REPO_NAME }}"
           ISSUE_URL=$(gh issue create \
-            --repo "${{ inputs.org }}/$REPO_NAME" \
+            --repo "${{ inputs.org }}/${{ env.REPO_NAME }}" \
             --title "Implement $PLUGIN plugin" \
             --body-file issue_body.md \
             --assignee @copilot)
@@ -279,29 +279,29 @@ jobs:
         run: |
           PLUGIN="${{ steps.parse.outputs.plugin_name }}"
           UE_VERSION="${{ steps.parse.outputs.ue_version }}"
-          REPO_URL="https://github.com/${{ inputs.org }}/$REPO_NAME"
+          REPO_URL="https://github.com/${{ inputs.org }}/${{ env.REPO_NAME }}"
           
           cat >> $GITHUB_STEP_SUMMARY << EOF
           ## ✓ Plugin Factory Complete
           
           **Plugin Name:** $PLUGIN  
           **UE Version:** $UE_VERSION  
-          **Repository:** [${{ inputs.org }}/$REPO_NAME]($REPO_URL)
+          **Repository:** [${{ inputs.org }}/${{ env.REPO_NAME }}]($REPO_URL)
           
           ### Actions Taken
           - ✓ Created repository from template
           - ✓ Renamed plugin from SamplePlugin to $PLUGIN
-          - ✓ Committed rename changes ([commit $RENAME_COMMIT_SHA]($REPO_URL/commit/$RENAME_COMMIT_SHA))
+          - ✓ Committed rename changes ([commit ${{ env.RENAME_COMMIT_SHA }}]($REPO_URL/commit/${{ env.RENAME_COMMIT_SHA }}))
           - ✓ Applied branch protection to main
           - ✓ Created implementation issue for Copilot Agent
           
           ### Next Steps
-          The GitHub Copilot Coding Agent has been assigned to implement the plugin functionality. Monitor the [issue]($ISSUE_URL) for progress.
+          The GitHub Copilot Coding Agent has been assigned to implement the plugin functionality. Monitor the [issue](${{ env.ISSUE_URL }}) for progress.
           
           ### Links
           - [Repository]($REPO_URL)
-          - [Issue]($ISSUE_URL)
-          - [Rename Commit]($REPO_URL/commit/$RENAME_COMMIT_SHA)
+          - [Issue](${{ env.ISSUE_URL }})
+          - [Rename Commit]($REPO_URL/commit/${{ env.RENAME_COMMIT_SHA }})
           EOF
           
           echo "✓ Job summary generated"
