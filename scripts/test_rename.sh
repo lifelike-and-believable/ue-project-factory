@@ -9,11 +9,11 @@ echo "Testing rename logic in: $TEST_DIR"
 # Create the expected template structure
 mkdir -p "$TEST_DIR/Plugins/SamplePlugin/Source/SamplePlugin"
 mkdir -p "$TEST_DIR/Plugins/SamplePlugin/Source/SamplePluginEditor"
-mkdir -p "$TEST_DIR/Plugins/SamplePlugin/Source/SamplePluginTests"
+mkdir -p "$TEST_DIR/Plugins/SamplePlugin/Source/SamplePluginTests/Private"
 mkdir -p "$TEST_DIR/ProjectSandbox"
 
-# Create a SmokeTest file (typical in UE plugin tests)
-cat > "$TEST_DIR/Plugins/SamplePlugin/Source/SamplePluginTests/SamplePluginSmokeTest.cpp" << 'EOF'
+# Create a SmokeTest file (typical in UE plugin tests, usually in Private subdirectory)
+cat > "$TEST_DIR/Plugins/SamplePlugin/Source/SamplePluginTests/Private/SamplePluginSmokeTest.cpp" << 'EOF'
 #include "Misc/AutomationTest.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSamplePluginSmokeTest, "SamplePlugin.Smoke", 
@@ -26,7 +26,7 @@ bool FSamplePluginSmokeTest::RunTest(const FString& Parameters)
 }
 EOF
 
-cat > "$TEST_DIR/Plugins/SamplePlugin/Source/SamplePluginTests/SamplePluginSmokeTest.h" << 'EOF'
+cat > "$TEST_DIR/Plugins/SamplePlugin/Source/SamplePluginTests/Private/SamplePluginSmokeTest.h" << 'EOF'
 #pragma once
 
 #include "CoreMinimal.h"
@@ -158,18 +158,26 @@ echo "✓ Renamed plugin folder"
 
 # Rename module source files in each directory before renaming the directories
 # This ensures files like SamplePlugin.cpp and SamplePluginSmokeTest.cpp become PluginName.cpp and PluginNameSmokeTest.cpp
+# Using find to handle files in subdirectories (e.g., Private/)
 for module_dir in "Plugins/$PLUGIN_NAME/Source/SamplePlugin" "Plugins/$PLUGIN_NAME/Source/SamplePluginEditor" "Plugins/$PLUGIN_NAME/Source/SamplePluginTests"; do
   if [ -d "$module_dir" ]; then
-    # Rename all .cpp, .h, and .Build.cs files that contain SamplePlugin in their name
-    for ext in cpp h Build.cs; do
-      for file in "$module_dir"/*SamplePlugin*."$ext"; do
-        if [ -f "$file" ]; then
-          filename=$(basename "$file")
-          new_filename=$(echo "$filename" | sed "s/SamplePlugin/$PLUGIN_NAME/g")
-          mv "$file" "$module_dir/$new_filename"
-          echo "✓ Renamed $filename to $new_filename"
-        fi
+    # Rename all .cpp, .h, and .Build.cs files that contain SamplePlugin in their name (including subdirectories)
+    for ext in cpp h; do
+      find "$module_dir" -type f -name "*SamplePlugin*.$ext" | while IFS= read -r file; do
+        dir=$(dirname "$file")
+        filename=$(basename "$file")
+        new_filename=$(echo "$filename" | sed "s/SamplePlugin/$PLUGIN_NAME/g")
+        mv "$file" "$dir/$new_filename"
+        echo "✓ Renamed $filename to $new_filename"
       done
+    done
+    # Handle .Build.cs files separately due to the dot in the extension
+    find "$module_dir" -type f -name "*SamplePlugin*.Build.cs" | while IFS= read -r file; do
+      dir=$(dirname "$file")
+      filename=$(basename "$file")
+      new_filename=$(echo "$filename" | sed "s/SamplePlugin/$PLUGIN_NAME/g")
+      mv "$file" "$dir/$new_filename"
+      echo "✓ Renamed $filename to $new_filename"
     done
   fi
 done
@@ -292,31 +300,31 @@ else
   exit 1
 fi
 
-# Check that SmokeTest files were renamed
-if [ -f "Plugins/$PLUGIN_NAME/Source/${PLUGIN_NAME}Tests/${PLUGIN_NAME}SmokeTest.cpp" ]; then
-  echo "✓ SmokeTest file renamed: ${PLUGIN_NAME}SmokeTest.cpp"
+# Check that SmokeTest files were renamed (in Private subdirectory)
+if [ -f "Plugins/$PLUGIN_NAME/Source/${PLUGIN_NAME}Tests/Private/${PLUGIN_NAME}SmokeTest.cpp" ]; then
+  echo "✓ SmokeTest file renamed: Private/${PLUGIN_NAME}SmokeTest.cpp"
 else
-  echo "✗ SmokeTest file NOT renamed: ${PLUGIN_NAME}SmokeTest.cpp"
+  echo "✗ SmokeTest file NOT renamed: Private/${PLUGIN_NAME}SmokeTest.cpp"
   exit 1
 fi
 
-if [ -f "Plugins/$PLUGIN_NAME/Source/${PLUGIN_NAME}Tests/${PLUGIN_NAME}SmokeTest.h" ]; then
-  echo "✓ SmokeTest header renamed: ${PLUGIN_NAME}SmokeTest.h"
+if [ -f "Plugins/$PLUGIN_NAME/Source/${PLUGIN_NAME}Tests/Private/${PLUGIN_NAME}SmokeTest.h" ]; then
+  echo "✓ SmokeTest header renamed: Private/${PLUGIN_NAME}SmokeTest.h"
 else
-  echo "✗ SmokeTest header NOT renamed: ${PLUGIN_NAME}SmokeTest.h"
+  echo "✗ SmokeTest header NOT renamed: Private/${PLUGIN_NAME}SmokeTest.h"
   exit 1
 fi
 
 # Verify old SmokeTest file names don't exist
-if [ -f "Plugins/$PLUGIN_NAME/Source/${PLUGIN_NAME}Tests/SamplePluginSmokeTest.cpp" ]; then
-  echo "✗ Old SmokeTest file still exists: SamplePluginSmokeTest.cpp"
+if [ -f "Plugins/$PLUGIN_NAME/Source/${PLUGIN_NAME}Tests/Private/SamplePluginSmokeTest.cpp" ]; then
+  echo "✗ Old SmokeTest file still exists: Private/SamplePluginSmokeTest.cpp"
   exit 1
 else
   echo "✓ Old SmokeTest file removed"
 fi
 
 # Verify content was also updated in SmokeTest files
-if grep -q "TestPlugin" "Plugins/$PLUGIN_NAME/Source/${PLUGIN_NAME}Tests/${PLUGIN_NAME}SmokeTest.cpp"; then
+if grep -q "TestPlugin" "Plugins/$PLUGIN_NAME/Source/${PLUGIN_NAME}Tests/Private/${PLUGIN_NAME}SmokeTest.cpp"; then
   echo "✓ SmokeTest file content updated"
 else
   echo "✗ SmokeTest file content NOT updated"
