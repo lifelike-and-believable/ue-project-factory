@@ -28,6 +28,10 @@ name: New UE Plugin Project
       requirements:
         description: 'Freeform requirements prompt (used if requirements_file is not provided)'
         required: false
+      assign_to_copilot:
+        description: 'Assign issue to Copilot Agent (true/false)'
+        required: false
+        default: 'true'
 jobs:
   factory:
     runs-on: ubuntu-latest
@@ -375,20 +379,39 @@ jobs:
           mv issue_body_final.md issue_body.md
           
           echo "Creating issue in ${{ inputs.org }}/${{ env.REPO_NAME }}"
-          ISSUE_URL=$(gh issue create \
-            --repo "${{ inputs.org }}/${{ env.REPO_NAME }}" \
-            --title "Implement $PLUGIN plugin" \
-            --body-file issue_body.md \
-            --assignee @copilot)
+          
+          # Conditionally assign to Copilot Agent based on input
+          if [ "${{ inputs.assign_to_copilot }}" = "true" ]; then
+            ISSUE_URL=$(gh issue create \
+              --repo "${{ inputs.org }}/${{ env.REPO_NAME }}" \
+              --title "Implement $PLUGIN plugin" \
+              --body-file issue_body.md \
+              --assignee @copilot)
+            echo "✓ Issue created and assigned to Copilot Agent: $ISSUE_URL"
+          else
+            ISSUE_URL=$(gh issue create \
+              --repo "${{ inputs.org }}/${{ env.REPO_NAME }}" \
+              --title "Implement $PLUGIN plugin" \
+              --body-file issue_body.md)
+            echo "✓ Issue created (not assigned): $ISSUE_URL"
+          fi
           
           echo "ISSUE_URL=$ISSUE_URL" >> $GITHUB_ENV
-          echo "✓ Issue created: $ISSUE_URL"
       
       - name: Generate job summary
         run: |
           PLUGIN="${{ steps.parse.outputs.plugin_name }}"
           UE_VERSION="${{ steps.parse.outputs.ue_version }}"
           REPO_URL="https://github.com/${{ inputs.org }}/${{ env.REPO_NAME }}"
+          
+          # Determine issue creation message based on assignment
+          if [ "${{ inputs.assign_to_copilot }}" = "true" ]; then
+            ISSUE_ACTION="Created implementation issue and assigned to Copilot Agent"
+            NEXT_STEPS="The GitHub Copilot Coding Agent has been assigned to implement the plugin functionality. Monitor the [issue](\${{ env.ISSUE_URL }}) for progress."
+          else
+            ISSUE_ACTION="Created implementation issue (not assigned)"
+            NEXT_STEPS="An implementation issue has been created. You can manually assign it or start working on the plugin. See the [issue](\${{ env.ISSUE_URL }}) for details."
+          fi
           
           cat >> $GITHUB_STEP_SUMMARY << EOF
           ## ✓ Plugin Factory Complete
@@ -402,10 +425,10 @@ jobs:
           - ✓ Renamed plugin from SamplePlugin to $PLUGIN
           - ✓ Committed rename changes ([commit ${{ env.RENAME_COMMIT_SHA }}]($REPO_URL/commit/${{ env.RENAME_COMMIT_SHA }}))
           - ✓ Applied branch protection to main
-          - ✓ Created implementation issue for Copilot Agent
+          - ✓ $ISSUE_ACTION
           
           ### Next Steps
-          The GitHub Copilot Coding Agent has been assigned to implement the plugin functionality. Monitor the [issue](${{ env.ISSUE_URL }}) for progress.
+          $NEXT_STEPS
           
           ### Links
           - [Repository]($REPO_URL)
