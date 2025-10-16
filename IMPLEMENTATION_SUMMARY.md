@@ -30,7 +30,7 @@ The automation for plugin name replacement is **fully implemented and tested**. 
 **Lines 135-209**: Plugin Renaming Logic (step "Rename plugin files and folders")
 - Replaces all content references (SamplePlugin → PluginName) using safe filename handling (git grep -lz | xargs -0 -r)
 - Renames plugin folder structure with existence checks
-- Renames module source files (.cpp, .h, .Build.cs) with defensive checks
+- Renames module source files (.cpp, .h, .Build.cs) with defensive checks, including files in subdirectories (e.g., Private/)
 - Renames source directories only if they exist (handles minimal templates)
 - Updates .uplugin file if present
 - Updates UE version in project file if present
@@ -193,6 +193,10 @@ bash scripts/test_integration.sh
    - Improved git grep with -z and xargs -0 for safer filename handling
    - Added informative logging for each rename operation
    - Enhanced resilience for templates with optional directories
+8. **Subdirectory Support**: Fixed file renaming to handle subdirectories (2025-10-16)
+   - Updated rename logic to use `find` for recursive file discovery
+   - Files in subdirectories like `Private/` are now correctly renamed
+   - Updated test to validate files in `Private/` subdirectory
 
 ## Conclusion
 

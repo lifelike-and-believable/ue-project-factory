@@ -212,18 +212,26 @@ jobs:
           
           # Rename module source files in each directory before renaming the directories
           # This ensures files like SamplePlugin.cpp and SamplePluginSmokeTest.cpp become PluginName.cpp and PluginNameSmokeTest.cpp
+          # Using find to handle files in subdirectories (e.g., Private/)
           for module_dir in "Plugins/$PLUGIN_NAME/Source/SamplePlugin" "Plugins/$PLUGIN_NAME/Source/SamplePluginEditor" "Plugins/$PLUGIN_NAME/Source/SamplePluginTests"; do
             if [ -d "$module_dir" ]; then
-              # Rename all .cpp, .h, and .Build.cs files that contain SamplePlugin in their name
-              for ext in cpp h Build.cs; do
-                for file in "$module_dir"/*SamplePlugin*."$ext"; do
-                  if [ -f "$file" ]; then
-                    filename=$(basename "$file")
-                    new_filename=$(echo "$filename" | sed "s/SamplePlugin/$PLUGIN_NAME/g")
-                    mv "$file" "$module_dir/$new_filename"
-                    echo "✓ Renamed $filename to $new_filename"
-                  fi
+              # Rename all .cpp, .h, and .Build.cs files that contain SamplePlugin in their name (including subdirectories)
+              for ext in cpp h; do
+                find "$module_dir" -type f -name "*SamplePlugin*.$ext" | while IFS= read -r file; do
+                  dir=$(dirname "$file")
+                  filename=$(basename "$file")
+                  new_filename=$(echo "$filename" | sed "s/SamplePlugin/$PLUGIN_NAME/g")
+                  mv "$file" "$dir/$new_filename"
+                  echo "✓ Renamed $filename to $new_filename"
                 done
+              done
+              # Handle .Build.cs files separately due to the dot in the extension
+              find "$module_dir" -type f -name "*SamplePlugin*.Build.cs" | while IFS= read -r file; do
+                dir=$(dirname "$file")
+                filename=$(basename "$file")
+                new_filename=$(echo "$filename" | sed "s/SamplePlugin/$PLUGIN_NAME/g")
+                mv "$file" "$dir/$new_filename"
+                echo "✓ Renamed $filename to $new_filename"
               done
             fi
           done
